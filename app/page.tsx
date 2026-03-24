@@ -443,8 +443,10 @@ export default function Home(){
               if(reactionPicker===compositeId){setReactionPicker(null);setPickerPos(null)}
               else{
                 const r=(e.currentTarget as HTMLElement).getBoundingClientRect()
-                const top=r.top+window.scrollY-290
-                const left=Math.min(r.left+window.scrollX,window.innerWidth-290)
+                const panelH=280,panelW=320
+                const spaceBelow=window.innerHeight-r.bottom
+                const top=spaceBelow>panelH?r.bottom+4:r.top-panelH-4
+                const left=Math.min(Math.max(r.left,8),window.innerWidth-panelW-8)
                 setPickerPos({top,left})
                 setReactionPicker(compositeId)
               }
@@ -599,29 +601,41 @@ export default function Home(){
                         const isActive=sv.iid===vid.iid
                         const originalVi=sub.videos.findIndex(v=>v.iid===sv.iid)
                         return(
-                          <div key={sv.iid} onClick={()=>{if(isLocked){setEnrollModal(true)}else{goTo(originalVi)}}} className={`flex gap-3 p-3 rounded-2xl cursor-pointer transition-colors ${isActive?'bg-red-50 border border-[#FF0000]/20':'hover:bg-[#f5f7f9]'} ${isLocked?'opacity-60':''}`}>
-                            <div className={`relative w-32 aspect-video rounded-xl overflow-hidden flex-shrink-0 bg-[#eef1f3] ${isLocked?'grayscale':''}`}>
+                          <div key={sv.iid} onClick={()=>{if(isLocked){setEnrollModal(true)}else{goTo(originalVi)}}} className={`flex items-stretch gap-3 p-3 rounded-2xl cursor-pointer transition-colors ${isActive?'bg-red-50 border border-[#FF0000]/20':'hover:bg-[#f5f7f9]'} ${isLocked?'opacity-60':''}`}>
+                            {/* Vote pill — full height left column */}
+                            <div className="flex-shrink-0" onClick={e=>e.stopPropagation()}>
+                              {isLocked
+                                ? <div className="w-8 h-full flex items-center justify-center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+                                : <div className={`flex flex-col items-center justify-between h-full px-2 py-2 rounded-xl ${isActive?'bg-white border border-red-100':'bg-[#eef1f3] border border-transparent'}`} style={{minHeight:72}}>
+                                    <button onClick={()=>voteVid(pv.mId,pv.sId,originalVi,'up')} className={`p-1.5 rounded-lg transition-all active:scale-90 ${getVoteDir(sv)==='up'?'text-[#FF0000] bg-red-50':'text-slate-400 hover:text-[#FF0000] hover:bg-white'}`}>
+                                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2L14 10H2L8 2Z"/></svg>
+                                    </button>
+                                    <span className={`text-xs font-black tabular-nums ${getVoteDir(sv)==='up'?'text-[#FF0000]':getVoteDir(sv)==='down'?'text-blue-500':'text-slate-500'}`}>{sv.votes>=1000?`${(sv.votes/1000).toFixed(1)}k`:sv.votes||'0'}</span>
+                                    <button onClick={()=>voteVid(pv.mId,pv.sId,originalVi,'down')} className={`p-1.5 rounded-lg transition-all active:scale-90 ${getVoteDir(sv)==='down'?'text-blue-500 bg-blue-50':'text-slate-400 hover:text-blue-500 hover:bg-white'}`}>
+                                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 14L2 6H14L8 14Z"/></svg>
+                                    </button>
+                                  </div>
+                              }
+                            </div>
+                            {/* Thumbnail */}
+                            <div className={`relative w-28 aspect-video rounded-xl overflow-hidden flex-shrink-0 self-center bg-[#eef1f3] ${isLocked?'grayscale':''}`}>
                               {isLocked
                                 ? <div className="w-full h-full flex items-center justify-center bg-[#f5f7f9]"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
                                 : <><img src={sv.thumbnail} alt="" className="w-full h-full object-cover"/><div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition-opacity"><svg width="20" height="20" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg></div></>
                               }
                             </div>
-                            <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
-                              <p className={`font-bold text-sm leading-tight line-clamp-2 ${isActive?'text-[#FF0000]':'text-[#2c2f31]'} ${sv.completed?'line-through opacity-50':''}`}>{isLocked?sv.title:''+sv.title}</p>
-                              <div className="flex items-center gap-2.5 mt-1.5">
+                            {/* Text */}
+                            <div className="flex-1 min-w-0 flex flex-col justify-center gap-1 py-0.5">
+                              <p className={`font-bold text-sm leading-tight line-clamp-2 ${isActive?'text-[#FF0000]':'text-[#2c2f31]'} ${sv.completed?'line-through opacity-50':''}`}>{sv.title}</p>
+                              {sv.channel&&<div className="flex items-center gap-1"><img src={sv.channelImg||''} alt="" className="w-3 h-3 rounded-full object-cover flex-shrink-0"/><span className="text-[10px] text-slate-400 font-medium truncate">{sv.channel}</span></div>}
+                              <div className="flex items-center gap-2.5">
                                 <div className={`flex items-center gap-1 text-[10px] ${isActive?'text-[#FF0000]':'text-slate-400'}`}>
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                                   <span className="font-bold">{sv.viewsShort||sv.views}</span>
                                 </div>
                                 <div className={`flex items-center gap-1 text-[10px] ${isActive?'text-red-400':'text-slate-400'}`}>
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                                   <span className="font-bold">{sv.likesShort||sv.likes}</span>
-                                </div>
-                                {/* Mini vote pill */}
-                                <div className={`flex flex-col items-center px-1.5 py-0.5 rounded-lg border scale-90 ${isActive?'bg-white border-red-100':'bg-[#f5f7f9] border-[#eef1f3]'}`} onClick={e=>e.stopPropagation()}>
-                                  <button onClick={()=>!isLocked&&voteVid(pv.mId,pv.sId,originalVi,'up')} className={`text-[10px] leading-none ${getVoteDir(sv)==='up'?'text-[#FF0000]':'text-slate-300'}`}>▲</button>
-                                  <span className={`text-[9px] font-black leading-none ${isActive?'text-[#FF0000]':'text-slate-500'}`}>{sv.votes>=1000?`${(sv.votes/1000).toFixed(1)}k`:sv.votes||'—'}</span>
-                                  <button onClick={()=>!isLocked&&voteVid(pv.mId,pv.sId,originalVi,'down')} className={`text-[10px] leading-none ${getVoteDir(sv)==='down'?'text-blue-400':'text-slate-300'}`}>▼</button>
                                 </div>
                               </div>
                             </div>
@@ -720,8 +734,8 @@ export default function Home(){
           <>
             <div className="fixed inset-0 z-[299]" onClick={()=>{setReactionPicker(null);setPickerPos(null)}}/>
             <div
-              className="fixed z-[300] bg-white border border-[#eef1f3] rounded-2xl shadow-2xl p-3 w-80"
-              style={{top:pickerPos.top,left:pickerPos.left}}
+              className="fixed z-[300] bg-white border border-[#eef1f3] rounded-2xl shadow-2xl p-3"
+              style={{top:pickerPos.top,left:pickerPos.left,width:320}}
             >
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">React to this note</p>
               <div className="grid grid-cols-10 gap-1 max-h-64 overflow-y-auto">
@@ -743,6 +757,44 @@ export default function Home(){
               </div>
             </div>
           </>
+        )}
+
+        {/* Suggest Better Modal — must live here inside player view */}
+        {modal?.type==='addVideo'&&(
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={()=>setModal(null)}>
+            <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl" onClick={e=>e.stopPropagation()}>
+              <div className="px-5 py-4 border-b border-[#eef1f3] flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-black text-[#2c2f31] uppercase tracking-wider">Suggest a Better Video</h3>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Added to this topic so others can discover and vote on it</p>
+                </div>
+                <button onClick={()=>setModal(null)} className="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+              </div>
+              <div className="p-5 space-y-4">
+                <div className="flex gap-2">
+                  <input autoFocus value={inputVal} onChange={e=>setInputVal(e.target.value)} onKeyDown={e=>e.key==='Enter'&&fetchLink()} placeholder="https://youtube.com/watch?v=..." className="flex-1 px-4 py-3 rounded-xl border border-[#eef1f3] bg-[#f5f7f9] text-sm text-[#2c2f31] focus:outline-none focus:ring-2 focus:ring-red-200"/>
+                  <button onClick={fetchLink} disabled={!inputVal.trim()||fetching} className="px-5 rounded-xl text-xs font-black bg-[#FF0000] text-white disabled:opacity-40 flex items-center gap-1 hover:bg-red-700 transition-colors">
+                    {fetching?<div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"/>:'Fetch'}
+                  </button>
+                </div>
+                {fetchError&&<p className="text-xs text-red-500 font-medium">{fetchError}</p>}
+                {preview&&(
+                  <div className="border border-[#eef1f3] rounded-2xl overflow-hidden">
+                    <img src={preview.thumbnail} alt="" className="w-full h-44 object-cover"/>
+                    <div className="p-4">
+                      <h4 className="text-sm font-black text-[#2c2f31] line-clamp-2 tracking-tight">{preview.title}</h4>
+                      <div className="flex items-center gap-2 mt-2">{preview.channelImg&&<img src={preview.channelImg} alt="" className="w-5 h-5 rounded-full object-cover"/>}<span className="text-xs font-bold text-slate-600">{preview.channel}</span></div>
+                      <div className="flex gap-3 text-[11px] text-slate-400 mt-1.5 font-medium uppercase tracking-wider"><span>{preview.views} views</span><span>{preview.likes} likes</span><span>{preview.duration}</span></div>
+                    </div>
+                  </div>
+                )}
+                <div className="flex justify-end gap-2">
+                  <button onClick={()=>setModal(null)} className="px-4 py-2.5 rounded-xl text-xs font-black text-slate-500 hover:bg-[#f5f7f9] border border-[#eef1f3] uppercase tracking-wider">Cancel</button>
+                  <button onClick={addVid} disabled={!preview} className="px-5 py-2.5 rounded-xl text-xs font-black bg-[#FF0000] text-white disabled:opacity-40 hover:bg-red-700 uppercase tracking-wider">Add to Topic</button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     )
