@@ -13,7 +13,7 @@ type Course={id:string;name:string;description:string;modules:Mod[];isPublic:boo
 
 const CATEGORIES=['Programming','Web Development','Data Science','AI & Machine Learning','Mobile Development','DevOps','Cybersecurity','Game Development','UI/UX Design','Digital Marketing','Photography','Video Editing','Music Production','3D Modeling','Finance','Language Learning','Cooking','Fitness','Business','Personal Development']
 const AVATARS=[{id:"galileo-1",name:"Galileo I",src:"/avatars/galileo-1.jpeg"},{id:"galileo-2",name:"Galileo II",src:"/avatars/galileo-2.jpeg"},{id:"galileo-3",name:"Galileo III",src:"/avatars/galileo-3.jpeg"},{id:"galileo-4",name:"Galileo IV",src:"/avatars/galileo-4.jpeg"},{id:"davinci-1",name:"Da Vinci I",src:"/avatars/davinci-1.jpeg"},{id:"davinci-2",name:"Da Vinci II",src:"/avatars/davinci-2.jpeg"},{id:"davinci-3",name:"Da Vinci III",src:"/avatars/davinci-3.jpeg"}]
-const REACTION_EMOJIS=['🚀','💡','✅','🔥','❤️','👏','🎯','💯','🧠','⭐','👀','😂','🤔','📌','💎','🙌','⚡','🎉','👍','📝']
+const REACTION_EMOJIS=Array.from({length:50},(_,i)=>`emoji_${i+1}`)
 
 let _c=0;const uid=()=>`u${++_c}${Date.now()}`;const swap=(a:any[],i:number,j:number)=>{const n=[...a];[n[i],n[j]]=[n[j],n[i]];return n}
 const genCode=()=>{const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let r='';for(let i=0;i<3;i++)r+=c[Math.floor(Math.random()*c.length)];r+='-';for(let i=0;i<3;i++)r+=c[Math.floor(Math.random()*c.length)];return r}
@@ -269,6 +269,7 @@ export default function Home(){
   const[joinCode,setJoinCode]=useState('')
   const[followedCats,setFollowedCats]=useState<string[]>([])
   const[reactionPicker,setReactionPicker]=useState<string|null>(null)
+  const[pickerPos,setPickerPos]=useState<{top:number;left:number}|null>(null)
   const[filterCreator,setFilterCreator]=useState<string>("")
   const[profileModal,setProfileModal]=useState(false)
   const[customAvatar,setCustomAvatar]=useState<string|null>(null)
@@ -402,18 +403,26 @@ export default function Home(){
         <p className="text-xs text-slate-600 leading-relaxed group-hover:text-[#2c2f31] transition-colors">{n.text}</p>
         <div className="flex items-center gap-1 mt-2 flex-wrap" onClick={e=>e.stopPropagation()}>
           {Object.entries(n.reactions||{}).map(([emoji,users])=>(
-            <button key={emoji} onClick={()=>toggleReaction(mId,sId,vi,n.id,emoji)} className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] border transition-colors ${(users as string[]).includes(userHandle)?'bg-red-50 border-red-200 text-[#FF0000]':'bg-white border-[#eef1f3] text-slate-500 hover:bg-[#eef1f3]'}`}>
-              {emoji}<span className="font-black">{(users as string[]).length}</span>
+            <button key={emoji} onClick={()=>toggleReaction(mId,sId,vi,n.id,emoji)} className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] border transition-colors ${(users as string[]).includes(userHandle)?'bg-red-50 border-red-200 text-[#FF0000]':'bg-white border-[#eef1f3] text-slate-500 hover:bg-[#eef1f3]'}`}>
+              <img src={`/emojis/${emoji}.gif`} alt={emoji} className="w-4 h-4 object-contain flex-shrink-0"/>
+              <span className="font-black">{(users as string[]).length}</span>
             </button>
           ))}
-          <div className="relative">
-            <button onClick={()=>setReactionPicker(reactionPicker===n.id?null:n.id)} className="px-2 py-0.5 rounded-full text-[11px] font-black bg-[#eef1f3] text-slate-500 hover:bg-red-50 hover:text-[#FF0000] transition-colors">+ React</button>
-            {reactionPicker===n.id&&(
-              <div className="absolute bottom-full left-0 mb-1 bg-white border border-[#eef1f3] rounded-2xl shadow-2xl p-2 grid grid-cols-5 gap-1 z-[200] w-48">
-                {REACTION_EMOJIS.map(e=><button key={e} onClick={()=>toggleReaction(mId,sId,vi,n.id,e)} className="p-1 rounded-xl hover:bg-[#f5f7f9] text-base">{e}</button>)}
-              </div>
-            )}
-          </div>
+          <button
+            onClick={e=>{
+              e.stopPropagation()
+              const compositeId=`${mId}::${sId}::${vi}::${n.id}`
+              if(reactionPicker===compositeId){setReactionPicker(null);setPickerPos(null)}
+              else{
+                const r=(e.currentTarget as HTMLElement).getBoundingClientRect()
+                const top=r.top+window.scrollY-290
+                const left=Math.min(r.left+window.scrollX,window.innerWidth-290)
+                setPickerPos({top,left})
+                setReactionPicker(compositeId)
+              }
+            }}
+            className="px-2 py-0.5 rounded-full text-[11px] font-black bg-[#eef1f3] text-slate-500 hover:bg-red-50 hover:text-[#FF0000] transition-colors"
+          >+ React</button>
         </div>
       </div>
       {n.authorHandle===userHandle&&<button onClick={e=>{e.stopPropagation();delNote(mId,sId,vi,n.id)}} className="p-1 opacity-0 group-hover:opacity-60 text-red-400 text-xs flex-shrink-0">✕</button>}
@@ -544,6 +553,36 @@ export default function Home(){
         </div>
 
         {numpad&&<NumpadModal value={noteMin} onChange={setNoteMin} onClose={()=>setNumpad(false)} onCapture={captureTime} currentTime={fmtTime(playerTime)}/>}
+
+        {/* Global reaction picker portal — fixed, never clipped */}
+        {reactionPicker&&pickerPos&&(
+          <>
+            <div className="fixed inset-0 z-[299]" onClick={()=>{setReactionPicker(null);setPickerPos(null)}}/>
+            <div
+              className="fixed z-[300] bg-white border border-[#eef1f3] rounded-2xl shadow-2xl p-3 w-80"
+              style={{top:pickerPos.top,left:pickerPos.left}}
+            >
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">React to this note</p>
+              <div className="grid grid-cols-10 gap-1 max-h-64 overflow-y-auto">
+                {REACTION_EMOJIS.map(e=>(
+                  <button
+                    key={e}
+                    onClick={()=>{
+                      if(reactionPicker){
+                        const parts=reactionPicker.split('::')
+                        if(parts.length===4)toggleReaction(parts[0],parts[1],Number(parts[2]),parts[3],e)
+                      }
+                      setReactionPicker(null);setPickerPos(null)
+                    }}
+                    className="w-7 h-7 rounded-xl hover:bg-[#f5f7f9] flex items-center justify-center transition-colors hover:scale-125 active:scale-95"
+                  >
+                    <img src={`/emojis/${e}.gif`} alt={e} className="w-6 h-6 object-contain"/>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     )
   }
