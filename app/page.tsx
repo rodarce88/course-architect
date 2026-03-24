@@ -276,13 +276,15 @@ export default function Home(){
   const[customAvatar,setCustomAvatar]=useState<string|null>(null)
   const[preferredCreator,setPreferredCreator]=useState<string>("")
   const[enrollModal,setEnrollModal]=useState(false)
+  const[coursesLoading,setCoursesLoading]=useState(false)
   const ytRef=useRef<any>(null)
 
   useEffect(()=>{
     if(!user||!handle) return
+    setCoursesLoading(true)
     sync.loadCoursesFromDB(user.id, handle).then(loaded=>{
       if(loaded.length>0) setCourses(loaded)
-    }).catch(console.error)
+    }).catch(console.error).finally(()=>setCoursesLoading(false))
   },[user, handle])
   const active=courses.find(c=>c.id===activeId)
   const togColl=(id:string)=>setColl(p=>({...p,[id]:!p[id]}))
@@ -1345,7 +1347,13 @@ export default function Home(){
         {/* MY COURSES TAB */}
         {dashTab==='my'&&(
           <div className="space-y-4">
-            {myCourses.length===0&&(
+            {coursesLoading&&(
+              <div className="bg-white rounded-2xl p-10 flex flex-col items-center justify-center shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+                <div className="w-10 h-10 border-3 border-[#FF0000] border-t-transparent rounded-full animate-spin mb-4"/>
+                <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Loading your courses...</p>
+              </div>
+            )}
+            {!coursesLoading&&myCourses.length===0&&(
               <div className="bg-white rounded-2xl p-10 text-center shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
                 <h3 className="text-2xl font-black text-[#2c2f31] tracking-tight mb-2">Welcome, arc/{userHandle}!</h3>
                 <p className="text-sm text-slate-400 font-medium">Create your first course below and start building.</p>
