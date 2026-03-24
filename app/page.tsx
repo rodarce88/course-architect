@@ -273,6 +273,8 @@ export default function Home(){
   const[filterCreator,setFilterCreator]=useState<string>("")
   const[profileModal,setProfileModal]=useState(false)
   const[customAvatar,setCustomAvatar]=useState<string|null>(null)
+  const[preferredCreator,setPreferredCreator]=useState<string>("")
+  const[enrollModal,setEnrollModal]=useState(false)
   const ytRef=useRef<any>(null)
 
   useEffect(()=>{if(courses.length===0){fetch("/data/course-resolve.json").then(r=>r.json()).then(d=>{if(d&&d.id)setCourses(prev=>[...prev,d])}).catch(()=>{})}},[] )
@@ -283,9 +285,35 @@ export default function Home(){
   const userName=user?.user_metadata?.full_name||user?.email||'Anon'
   const userImg=customAvatar||user?.user_metadata?.avatar_url||''
   const isOwner=(c:Course)=>c.ownerHandle===userHandle
+  // Returns set of video iids freely playable for non-enrolled users
+  // Rule: first video of the course (intro) + top 2 by votes across ALL topics
+  // If enrolled or owner → everything unlocked
+  const getUnlockedVids=(sub:Sub,courseOwner:string):Set<string>=>{
+    const isEnrolled=active?.enrolledBy?.includes(userHandle)||false
+    const isCourseOwner=active?.ownerHandle===userHandle||false
+    if(isEnrolled||isCourseOwner)return new Set(sub.videos.map(v=>v.iid))
+    if(!active)return new Set<string>()
+    // Collect ALL videos across the whole course with their iid
+    const allVids:{iid:string;votes:number;isFirst:boolean}[]=[]
+    let firstAdded=false
+    active.modules.forEach(m=>m.subs.forEach(s=>s.videos.forEach((v,vi)=>{
+      allVids.push({iid:v.iid,votes:v.votes||0,isFirst:!firstAdded&&vi===0&&m.id===active.modules[0]?.id&&s.id===m.subs[0]?.id})
+      if(!firstAdded&&vi===0&&m.id===active.modules[0]?.id&&s.id===m.subs[0]?.id)firstAdded=true
+    })))
+    const unlocked=new Set<string>()
+    // Always unlock the very first video of the course
+    const first=allVids.find(v=>v.isFirst)
+    if(first)unlocked.add(first.iid)
+    // Top 2 by votes (excluding the first if already added)
+    const byVotes=[...allVids].filter(v=>!unlocked.has(v.iid)).sort((a,b)=>b.votes-a.votes)
+    byVotes.slice(0,2).forEach(v=>unlocked.add(v.iid))
+    // Return only the iids that belong to THIS sub
+    const subIids=new Set(sub.videos.map(v=>v.iid))
+    return new Set([...unlocked].filter(iid=>subIids.has(iid)))
+  }
 
   useEffect(()=>{supabase.auth.getSession().then(({data:{session}})=>{setUser(session?.user??null);setLoading(false)});const{data:{subscription}}=supabase.auth.onAuthStateChange((_e,session)=>{setUser(session?.user??null);setLoading(false)});return()=>subscription.unsubscribe()},[] )
-  useEffect(()=>{const ca=localStorage.getItem('arc_avatar');if(ca)setCustomAvatar(ca);const h=localStorage.getItem('arc_handle');if(h)setHandle(h);else if(user){const name=user.user_metadata?.full_name||user.email?.split('@')[0]||'user';const auto=name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,15)+Math.floor(Math.random()*99);saveHandle(auto)}},[user])
+  useEffect(()=>{const ca=localStorage.getItem('arc_avatar');if(ca)setCustomAvatar(ca);const h=localStorage.getItem('arc_handle');if(h)setHandle(h);else if(user){const name=user.user_metadata?.full_name||user.email?.split('@')[0]||'user';const auto=name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,15)+Math.floor(Math.random()*99);saveHandle(auto)};const pc=localStorage.getItem('arc_preferred_creator');if(pc)setPreferredCreator(pc)},[user])
   const saveHandle=(h:string)=>{setHandle(h);localStorage.setItem('arc_handle',h)}
 
   const signInGoogle=async()=>{await supabase.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.origin}})}
@@ -469,54 +497,162 @@ export default function Home(){
             </div>
 
             <div className="px-4 lg:px-0 py-5 space-y-4">
-              {/* Video meta */}
-              <div className="flex items-start gap-4">
-                <VotePill score={vid.votes} voted={getVoteDir(vid)} onUp={()=>voteVid(pv.mId,pv.sId,pv.vi,'up')} onDown={()=>voteVid(pv.mId,pv.sId,pv.vi,'down')}/>
-                <div className="flex-1">
-                  <h2 className="text-xl font-black text-[#2c2f31] tracking-tight leading-tight">{vid.title}</h2>
-                  <div className="flex items-center gap-3 mt-2">
-                    {vid.channelImg&&<img src={vid.channelImg} alt="" className="w-8 h-8 rounded-full object-cover border border-[#eef1f3]"/>}
-                    <div>
-                      <p className="text-sm font-bold text-[#2c2f31]">{vid.channel}</p>
-                      {vid.subscribers&&<p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">{vid.subscribers} subs</p>}
-                    </div>
-                    <div className="ml-auto flex items-center gap-2">
-                      <button onClick={()=>toggleComp(pv.mId,pv.sId,pv.vi)} className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${vid.completed?'bg-emerald-50 text-emerald-600 border border-emerald-200':'bg-[#f5f7f9] text-slate-500 border border-[#eef1f3] hover:border-emerald-200'}`}>
-                        {vid.completed?'✓ Done':'○ Mark Done'}
-                      </button>
-                      <button onClick={()=>{setModal({type:'addVideo',mId:pv.mId,sId:pv.sId});setInputVal('');setPreview(null);setFetchError('')}} className="text-[10px] font-bold text-slate-400 hover:text-[#FF0000] transition-colors uppercase tracking-wider">Not great? Suggest better →</button>
-                    </div>
+              {/* Breadcrumb — mockup style */}
+              <nav className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.06em] text-slate-400">
+                <span className="hover:text-[#FF0000] cursor-pointer" onClick={()=>setPV(null)}>{active.name}</span>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                <span>{mod?.name}</span>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                <span className="text-[#FF0000]">{sub?.name}</span>
+              </nav>
+
+              {/* Title */}
+              <h1 className="font-black text-xl md:text-2xl tracking-tight text-[#2c2f31] leading-tight">{vid.title}</h1>
+
+              {/* Channel row + rating + stats */}
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-3">
+                  {vid.channelImg&&<div className="w-10 h-10 rounded-full overflow-hidden border border-[#FF0000]/20 flex-shrink-0"><img src={vid.channelImg} alt="" className="w-full h-full object-cover"/></div>}
+                  <div>
+                    <p className="text-sm font-bold text-[#2c2f31]">{vid.channel}</p>
+                    {vid.subscribers&&<p className="text-[0.65rem] text-slate-400 font-black uppercase tracking-wider">{vid.subscribers} subs</p>}
                   </div>
-                  <div className="flex gap-4 text-[11px] text-slate-400 mt-2 font-medium uppercase tracking-wider">
-                    <span>{vid.views} views</span>
-                    <span>{vid.likes} likes</span>
-                    <span>{vid.duration}</span>
-                    <span>👥 <strong className="text-slate-600">{active.enrolledBy?.length||0}</strong> studying</span>
+                  {/* Creator filter pill */}
+                  {vid.channel&&(
+                    preferredCreator===vid.channel
+                      ? <button onClick={()=>{setPreferredCreator('');localStorage.setItem('arc_preferred_creator','')}} className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 border border-[#FF0000]/30 text-[10px] font-black text-[#FF0000] uppercase tracking-wider">
+                          ★ Following · Remove
+                        </button>
+                      : <button onClick={()=>{setPreferredCreator(vid.channel);localStorage.setItem('arc_preferred_creator',vid.channel)}} className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f5f7f9] border border-[#eef1f3] text-[10px] font-black text-slate-500 hover:border-[#FF0000]/30 hover:text-[#FF0000] uppercase tracking-wider transition-colors">
+                          ☆ Follow creator
+                        </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-4">
+                  {/* Reddit-style vote pill */}
+                  <div className="flex flex-col items-center bg-[#eef1f3] px-2 py-1 rounded-xl border border-[#e5e9eb]">
+                    <button onClick={()=>voteVid(pv.mId,pv.sId,pv.vi,'up')} className={`leading-none transition-colors ${getVoteDir(vid)==='up'?'text-[#FF0000]':'text-slate-400 hover:text-[#FF0000]'}`}>
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2L14 9H2L8 2Z"/></svg>
+                    </button>
+                    <span className={`text-[0.7rem] font-black leading-none my-0.5 ${getVoteDir(vid)==='up'?'text-[#FF0000]':getVoteDir(vid)==='down'?'text-blue-500':'text-[#2c2f31]'}`}>{vid.votes>=1000?`${(vid.votes/1000).toFixed(1)}k`:vid.votes}</span>
+                    <button onClick={()=>voteVid(pv.mId,pv.sId,pv.vi,'down')} className={`leading-none transition-colors ${getVoteDir(vid)==='down'?'text-blue-500':'text-slate-400 hover:text-blue-500'}`}>
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 14L2 7H14L8 14Z"/></svg>
+                    </button>
+                  </div>
+                  {/* Views + likes */}
+                  <div className="flex items-center gap-3 text-slate-400">
+                    <div className="flex flex-col items-center">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      <span className="text-[0.65rem] font-bold">{vid.viewsShort||vid.views}</span>
+                    </div>
+                    <div className="flex flex-col items-center text-[#FF0000]">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                      <span className="text-[0.65rem] font-bold">{vid.likesShort||vid.likes}</span>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Notes Panel */}
-              <div className="bg-white rounded-2xl p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-black text-[#2c2f31] uppercase tracking-wider">Notes</h3>
-                  <div className="flex border border-[#eef1f3] rounded-xl overflow-hidden bg-[#f5f7f9]">
-                    <button onClick={()=>setNoteTab('public')} className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider transition-colors ${noteTab==='public'?'bg-white text-[#2c2f31] shadow-sm':'text-slate-400'}`}>Public</button>
-                    <button onClick={()=>setNoteTab('mine')} className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider transition-colors ${noteTab==='mine'?'bg-white text-[#2c2f31] shadow-sm':'text-slate-400'}`}>Mine</button>
-                  </div>
+              {/* Action Buttons — mockup style */}
+              <div className="flex gap-3 pt-1">
+                <button onClick={()=>toggleComp(pv.mId,pv.sId,pv.vi)} className={`flex-1 py-3 rounded-xl font-black text-sm transition-all active:scale-95 ${vid.completed?'bg-emerald-500 text-white shadow-[0_4px_16px_rgba(16,185,129,0.3)]':'bg-[#FF0000] text-white shadow-[0_4px_16px_rgba(255,0,0,0.2)] hover:bg-red-700'}`}>
+                  {vid.completed?'✓ Completed':'Complete Lesson'}
+                </button>
+                <button
+                  onClick={()=>{setModal({type:'addVideo',mId:pv.mId,sId:pv.sId});setInputVal('');setPreview(null);setFetchError('')}}
+                  className="flex-1 bg-[#eef1f3] text-slate-500 py-3 rounded-xl font-black text-sm border border-[#e5e9eb] hover:bg-[#e5e9eb] active:scale-95 transition-all"
+                >
+                  Not Great? Suggest Better
+                </button>
+              </div>
+
+              {/* Tabs: Other Videos | Collaborative Notes */}
+              <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden">
+                <div className="flex border-b border-[#eef1f3]">
+                  <button onClick={()=>setNoteTab('public')} className={`flex-1 py-4 text-sm font-black transition-colors ${noteTab==='public'?'text-[#FF0000] border-b-[3px] border-[#FF0000] -mb-px':'text-slate-400 hover:text-slate-600'}`}>Other Videos</button>
+                  <button onClick={()=>setNoteTab('mine')} className={`flex-1 py-4 text-sm font-black transition-colors ${noteTab==='mine'?'text-[#FF0000] border-b-[3px] border-[#FF0000] -mb-px':'text-slate-400 hover:text-slate-600'}`}>Collaborative Notes</button>
                 </div>
-                <div className="flex gap-2 mb-4 items-end">
-                  <button onClick={()=>setNumpad(true)} className="px-3 py-2.5 rounded-xl border border-[#eef1f3] bg-[#f5f7f9] text-xs font-black font-mono min-w-[80px] text-center text-[#2c2f31] hover:bg-[#eef1f3] transition-colors">⏱ {noteMin||fmtTime(playerTime)}</button>
-                  <div className="flex-1 relative">
-                    <input value={noteDesc} onChange={e=>setNoteDesc(e.target.value.slice(0,280))} placeholder="Write a note..." className="w-full px-3 py-2.5 rounded-xl border border-[#eef1f3] bg-[#f5f7f9] text-xs text-[#2c2f31] focus:outline-none focus:ring-2 focus:ring-red-200 pr-14" onKeyDown={e=>{if(e.key==='Enter')addNote(pv.mId,pv.sId,pv.vi)}}/>
-                    <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-bold ${noteDesc.length>=260?'text-[#FF0000]':'text-slate-300'}`}>{noteDesc.length}/280</span>
+
+                {noteTab==='public'?(
+                  /* Other Videos tab — sorted by votes, preferred creator first */
+                  <div className="p-4 space-y-3">
+                    {preferredCreator&&(
+                      <div className="flex items-center gap-2 px-2 py-1.5 bg-red-50 rounded-xl border border-red-100 mb-2">
+                        <span className="text-[10px] font-black text-[#FF0000] uppercase tracking-wider">★ Showing {preferredCreator} first</span>
+                        <button onClick={()=>{setPreferredCreator('');localStorage.setItem('arc_preferred_creator','')}} className="ml-auto text-[10px] text-red-300 hover:text-red-500 font-black">✕ Clear</button>
+                      </div>
+                    )}
+                    {(()=>{
+                      if(!sub)return null
+                      const sorted=[...sub.videos].sort((a,b)=>{
+                        if(preferredCreator){
+                          const aMatch=a.channel===preferredCreator
+                          const bMatch=b.channel===preferredCreator
+                          if(aMatch&&!bMatch)return-1
+                          if(!aMatch&&bMatch)return 1
+                        }
+                        return(b.votes||0)-(a.votes||0)
+                      })
+                      const unlocked=getUnlockedVids(sub,active.ownerHandle)
+                      return sorted.map((sv,idx)=>{
+                        const isLocked=!unlocked.has(sv.iid)
+                        const isActive=sv.iid===vid.iid
+                        const originalVi=sub.videos.findIndex(v=>v.iid===sv.iid)
+                        return(
+                          <div key={sv.iid} onClick={()=>{if(isLocked){setEnrollModal(true)}else{goTo(originalVi)}}} className={`flex gap-3 p-3 rounded-2xl cursor-pointer transition-colors ${isActive?'bg-red-50 border border-[#FF0000]/20':'hover:bg-[#f5f7f9]'} ${isLocked?'opacity-60':''}`}>
+                            <div className={`relative w-32 aspect-video rounded-xl overflow-hidden flex-shrink-0 bg-[#eef1f3] ${isLocked?'grayscale':''}`}>
+                              {isLocked
+                                ? <div className="w-full h-full flex items-center justify-center bg-[#f5f7f9]"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+                                : <><img src={sv.thumbnail} alt="" className="w-full h-full object-cover"/><div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition-opacity"><svg width="20" height="20" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg></div></>
+                              }
+                            </div>
+                            <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                              <p className={`font-bold text-sm leading-tight line-clamp-2 ${isActive?'text-[#FF0000]':'text-[#2c2f31]'} ${sv.completed?'line-through opacity-50':''}`}>{isLocked?sv.title:''+sv.title}</p>
+                              <div className="flex items-center gap-2.5 mt-1.5">
+                                <div className={`flex items-center gap-1 text-[10px] ${isActive?'text-[#FF0000]':'text-slate-400'}`}>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                  <span className="font-bold">{sv.viewsShort||sv.views}</span>
+                                </div>
+                                <div className={`flex items-center gap-1 text-[10px] ${isActive?'text-red-400':'text-slate-400'}`}>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                  <span className="font-bold">{sv.likesShort||sv.likes}</span>
+                                </div>
+                                {/* Mini vote pill */}
+                                <div className={`flex flex-col items-center px-1.5 py-0.5 rounded-lg border scale-90 ${isActive?'bg-white border-red-100':'bg-[#f5f7f9] border-[#eef1f3]'}`} onClick={e=>e.stopPropagation()}>
+                                  <button onClick={()=>!isLocked&&voteVid(pv.mId,pv.sId,originalVi,'up')} className={`text-[10px] leading-none ${getVoteDir(sv)==='up'?'text-[#FF0000]':'text-slate-300'}`}>▲</button>
+                                  <span className={`text-[9px] font-black leading-none ${isActive?'text-[#FF0000]':'text-slate-500'}`}>{sv.votes>=1000?`${(sv.votes/1000).toFixed(1)}k`:sv.votes||'—'}</span>
+                                  <button onClick={()=>!isLocked&&voteVid(pv.mId,pv.sId,originalVi,'down')} className={`text-[10px] leading-none ${getVoteDir(sv)==='down'?'text-blue-400':'text-slate-300'}`}>▼</button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })
+                    })()}
                   </div>
-                  <button onClick={()=>addNote(pv.mId,pv.sId,pv.vi)} disabled={!noteDesc.trim()} className="px-4 py-2.5 rounded-xl text-xs font-black bg-[#FF0000] text-white disabled:opacity-40 hover:bg-red-700 transition-colors">Add</button>
-                </div>
-                {filteredNotes.length===0
-                  ? <p className="text-xs text-slate-400 text-center py-8 font-medium">{noteTab==='public'?'No public notes yet':'No notes yet'}</p>
-                  : <div className="space-y-2 max-h-[400px] overflow-y-auto">{filteredNotes.map(n=><NoteCard key={n.id} n={n} mId={pv.mId} sId={pv.sId} vi={pv.vi} courseOwnerHandle={active.ownerHandle}/>)}</div>
-                }
+                ):(
+                  /* Collaborative Notes tab */
+                  <div className="p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex border border-[#eef1f3] rounded-xl overflow-hidden bg-[#f5f7f9]">
+                        <button onClick={()=>setNoteTab('mine')} className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-[#2c2f31] bg-white shadow-sm">Mine</button>
+                        <button onClick={()=>setNoteTab('public')} className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">Other Videos</button>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 items-end">
+                      <button onClick={()=>setNumpad(true)} className="px-3 py-2.5 rounded-xl border border-[#eef1f3] bg-[#f5f7f9] text-xs font-black font-mono min-w-[80px] text-center text-[#2c2f31] hover:bg-[#eef1f3] transition-colors">⏱ {noteMin||fmtTime(playerTime)}</button>
+                      <div className="flex-1 relative">
+                        <input value={noteDesc} onChange={e=>setNoteDesc(e.target.value.slice(0,280))} placeholder="Write a note..." className="w-full px-3 py-2.5 rounded-xl border border-[#eef1f3] bg-[#f5f7f9] text-xs text-[#2c2f31] focus:outline-none focus:ring-2 focus:ring-red-200 pr-14" onKeyDown={e=>{if(e.key==='Enter')addNote(pv.mId,pv.sId,pv.vi)}}/>
+                        <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-bold ${noteDesc.length>=260?'text-[#FF0000]':'text-slate-300'}`}>{noteDesc.length}/280</span>
+                      </div>
+                      <button onClick={()=>addNote(pv.mId,pv.sId,pv.vi)} disabled={!noteDesc.trim()} className="px-4 py-2.5 rounded-xl text-xs font-black bg-[#FF0000] text-white disabled:opacity-40 hover:bg-red-700 transition-colors">Add</button>
+                    </div>
+                    {filteredNotes.length===0
+                      ? <p className="text-xs text-slate-400 text-center py-8 font-medium">No notes yet</p>
+                      : <div className="space-y-2 max-h-[400px] overflow-y-auto">{filteredNotes.map(n=><NoteCard key={n.id} n={n} mId={pv.mId} sId={pv.sId} vi={pv.vi} courseOwnerHandle={active.ownerHandle}/>)}</div>
+                    }
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -529,15 +665,23 @@ export default function Home(){
               <div className="mt-3">{sub&&<PBar done={subComp(sub)} total={sub.videos.length}/>}</div>
             </div>
             <div className="p-3 space-y-1">
-              {sub?.videos.map((sv,svi)=>(
-                <div key={sv.iid} onClick={()=>goTo(svi)} className={`flex items-center gap-2.5 p-2.5 rounded-2xl cursor-pointer transition-all ${svi===pv.vi?'bg-red-50 border border-red-100':'hover:bg-[#f5f7f9] border border-transparent'}`}>
-                  <VotePill score={sv.votes} voted={getVoteDir(sv)} onUp={()=>voteVid(pv.mId,pv.sId,svi,'up')} onDown={()=>voteVid(pv.mId,pv.sId,svi,'down')} compact/>
-                  <button onClick={e=>{e.stopPropagation();toggleComp(pv.mId,pv.sId,svi)}} className="flex-shrink-0 text-sm">
+              {sub?.videos.map((sv,svi)=>{
+                const unlocked=active?getUnlockedVids(sub,active.ownerHandle):new Set<string>()
+                const isLocked=!unlocked.has(sv.iid)
+                return(
+                <div key={sv.iid} onClick={()=>{if(isLocked){setEnrollModal(true)}else{goTo(svi)}}} className={`flex items-center gap-2.5 p-2.5 rounded-2xl cursor-pointer transition-all ${svi===pv.vi?'bg-red-50 border border-red-100':'hover:bg-[#f5f7f9] border border-transparent'} ${isLocked?'opacity-60':''}`}>
+                  {isLocked
+                    ? <div className="flex flex-col items-center justify-center w-5"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+                    : <VotePill score={sv.votes} voted={getVoteDir(sv)} onUp={()=>voteVid(pv.mId,pv.sId,svi,'up')} onDown={()=>voteVid(pv.mId,pv.sId,svi,'down')} compact/>
+                  }
+                  <button onClick={e=>{e.stopPropagation();if(!isLocked)toggleComp(pv.mId,pv.sId,svi)}} className="flex-shrink-0 text-sm">
                     {sv.completed?<span className="text-emerald-500 font-black">✓</span>:<span className="text-slate-300">○</span>}
                   </button>
-                  <div className="relative flex-shrink-0 w-24 h-14 cursor-pointer">
-                    <img src={sv.thumbnail} alt="" className="w-full h-full object-cover rounded-xl"/>
-                    <span className="absolute bottom-1 right-1 bg-black/70 text-white text-[7px] px-1 py-0.5 rounded-md font-bold">{sv.duration}</span>
+                  <div className={`relative flex-shrink-0 w-24 h-14 cursor-pointer ${isLocked?'grayscale':''}`}>
+                    {isLocked
+                      ? <div className="w-full h-full rounded-xl bg-[#eef1f3] flex items-center justify-center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+                      : <><img src={sv.thumbnail} alt="" className="w-full h-full object-cover rounded-xl"/><span className="absolute bottom-1 right-1 bg-black/70 text-white text-[7px] px-1 py-0.5 rounded-md font-bold">{sv.duration}</span></>
+                    }
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-bold text-[#2c2f31] leading-snug line-clamp-2">{sv.title}</p>
@@ -547,12 +691,29 @@ export default function Home(){
                     </div>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           </div>
         </div>
 
         {numpad&&<NumpadModal value={noteMin} onChange={setNoteMin} onClose={()=>setNumpad(false)} onCapture={captureTime} currentTime={fmtTime(playerTime)}/>}
+
+        {/* Enroll gate modal */}
+        {enrollModal&&(
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={()=>setEnrollModal(false)}>
+            <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-8 text-center" onClick={e=>e.stopPropagation()}>
+              <div className="w-14 h-14 rounded-2xl bg-[#f5f7f9] flex items-center justify-center mx-auto mb-5">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#FF0000" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </div>
+              <h3 className="text-xl font-black text-[#2c2f31] tracking-tight mb-2">This video is locked</h3>
+              <p className="text-sm text-slate-500 leading-relaxed mb-6">Enroll in this course to unlock all videos and start your full learning journey.</p>
+              <button onClick={()=>{if(active){enrollCourse(active.id)};setEnrollModal(false)}} className="w-full py-3.5 rounded-xl font-black text-sm bg-[#FF0000] text-white hover:bg-red-700 shadow-[0_4px_16px_rgba(255,0,0,0.2)] transition-all active:scale-95">
+                🎯 Lock In — Enroll Now
+              </button>
+              <button onClick={()=>setEnrollModal(false)} className="mt-3 text-xs text-slate-400 hover:text-slate-600 font-bold">Maybe later</button>
+            </div>
+          </div>
+        )}
 
         {/* Global reaction picker portal — fixed, never clipped */}
         {reactionPicker&&pickerPos&&(
@@ -793,32 +954,32 @@ export default function Home(){
                                         <button onClick={()=>{setModal({type:'addVideo',mId:mod.id,sId:sub.id});setInputVal('');setPreview(null);setFetchError('')}} className="mt-2 text-[11px] font-black text-[#FF0000] hover:underline">+ Add video</button>
                                       </div>
                                     : <>
-                                        {sub.videos.map((v,vi)=>(
-                                          <div key={v.iid} className="flex items-start gap-3 p-1 hover:bg-[#f5f7f9] rounded-2xl group/v transition-colors">
+                                        {sub.videos.map((v,vi)=>{
+                                          const unlocked=getUnlockedVids(sub,active.ownerHandle)
+                                          const isLocked=!unlocked.has(v.iid)
+                                          return(
+                                          <div key={v.iid} className={`flex items-start gap-3 p-1 hover:bg-[#f5f7f9] rounded-2xl group/v transition-colors ${isLocked?'opacity-60':''}`}>
                                             <VotePill score={v.votes} voted={getVoteDir(v)} onUp={()=>voteVid(mod.id,sub.id,vi,'up')} onDown={()=>voteVid(mod.id,sub.id,vi,'down')}/>
                                             <button onClick={()=>toggleComp(mod.id,sub.id,vi)} className="flex-shrink-0 mt-3 text-sm">
                                               {v.completed?<span className="text-emerald-500 font-black">✓</span>:<span className="text-slate-300">○</span>}
                                             </button>
-                                            <div className="relative flex-shrink-0 w-36 cursor-pointer mt-0.5 group/thumb" onClick={()=>setPV({mId:mod.id,sId:sub.id,vi})}>
-                                              <img src={v.thumbnail} alt="" className="w-full h-20 object-cover rounded-xl"/>
-                                              <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity rounded-xl">
-                                                <div className="w-8 h-8 bg-[#FF0000]/90 rounded-full flex items-center justify-center">
-                                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
-                                                </div>
-                                              </div>
-                                              <span className="absolute bottom-1 right-1 bg-black/70 text-white text-[7px] px-1 py-0.5 rounded-md font-bold">{v.duration}</span>
+                                            <div className={`relative flex-shrink-0 w-36 cursor-pointer mt-0.5 group/thumb`} onClick={()=>{if(isLocked){setEnrollModal(true)}else{setPV({mId:mod.id,sId:sub.id,vi})}}}>
+                                              {isLocked
+                                                ? <div className="w-full h-20 rounded-xl bg-[#eef1f3] flex items-center justify-center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+                                                : <><img src={v.thumbnail} alt="" className="w-full h-20 object-cover rounded-xl"/><div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity rounded-xl"><div className="w-8 h-8 bg-[#FF0000]/90 rounded-full flex items-center justify-center"><svg width="12" height="12" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg></div></div><span className="absolute bottom-1 right-1 bg-black/70 text-white text-[7px] px-1 py-0.5 rounded-md font-bold">{v.duration}</span></>
+                                              }
                                             </div>
-                                            <div className="flex-1 min-w-0 cursor-pointer pt-0.5" onClick={()=>setPV({mId:mod.id,sId:sub.id,vi})}>
+                                            <div className="flex-1 min-w-0 cursor-pointer pt-0.5" onClick={()=>{if(isLocked){setEnrollModal(true)}else{setPV({mId:mod.id,sId:sub.id,vi})}}}>
                                               <p className={`text-sm font-bold text-[#2c2f31] line-clamp-2 tracking-tight ${v.completed?'opacity-50 line-through':''}`}>{v.title}</p>
-                                              <div className="flex items-center gap-1.5 mt-1">{v.channelImg&&<img src={v.channelImg} alt="" className="w-3 h-3 rounded-full object-cover"/>}<span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{v.channel}</span></div>
+                                              <div className="flex items-center gap-1.5 mt-1">{v.channelImg&&<img src={v.channelImg} alt="" className="w-3 h-3 rounded-full object-cover"/>}<span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{v.channel}</span>{isLocked&&<span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-[#eef1f3] text-slate-400 uppercase tracking-wider">ENROLL TO UNLOCK</span>}</div>
                                               <div className="flex gap-2 text-[8px] text-slate-400 mt-0.5 font-bold uppercase tracking-wider"><span>{v.viewsShort||v.views}</span><span>{v.likesShort||v.likes}</span></div>
                                             </div>
-                                            <div className="opacity-0 group-hover/v:opacity-100 transition-opacity mt-1">
+                                            {owner&&<div className="opacity-0 group-hover/v:opacity-100 transition-opacity mt-1">
                                               <button onClick={e=>{e.stopPropagation();setDeleteTarget({id:v.iid,name:v.title,type:'vid',mId:mod.id,sId:sub.id,vi})}} className="p-1.5 text-red-300 hover:text-red-500 text-[10px]" title="Remove video">✕</button>
-                                            </div>
+                                            </div>}
                                           </div>
-                                        ))}
-                                        <button onClick={()=>{setModal({type:'addVideo',mId:mod.id,sId:sub.id});setInputVal('');setPreview(null);setFetchError('')}} className="w-full py-2 text-[11px] font-black text-slate-400 hover:text-[#FF0000] uppercase tracking-wider transition-colors">+ Add video</button>
+                                        )})}
+                                        {owner&&<button onClick={()=>{setModal({type:'addVideo',mId:mod.id,sId:sub.id});setInputVal('');setPreview(null);setFetchError('')}} className="w-full py-2 text-[11px] font-black text-slate-400 hover:text-[#FF0000] uppercase tracking-wider transition-colors">+ Add video</button>}
                                       </>
                                   }
                                 </div>
@@ -888,12 +1049,15 @@ export default function Home(){
           </div>
         </div>
 
-        {/* Add Video Modal */}
+        {/* Add Video / Suggest Better Modal */}
         {modal?.type==='addVideo'&&(
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={()=>setModal(null)}>
             <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl" onClick={e=>e.stopPropagation()}>
               <div className="px-5 py-4 border-b border-[#eef1f3] flex items-center justify-between">
-                <h3 className="text-sm font-black text-[#2c2f31] uppercase tracking-wider">Add YouTube Video</h3>
+                <div>
+                  <h3 className="text-sm font-black text-[#2c2f31] uppercase tracking-wider">{pv?'Suggest a Better Video':'Add YouTube Video'}</h3>
+                  {pv&&<p className="text-[10px] text-slate-400 mt-0.5">This video will be added to the topic for others to discover and vote on</p>}
+                </div>
                 <button onClick={()=>setModal(null)} className="text-slate-400 hover:text-slate-600">✕</button>
               </div>
               <div className="p-5 space-y-4">
