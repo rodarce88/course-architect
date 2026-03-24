@@ -620,6 +620,24 @@ export default function Home(){
 
           {/* Course Header */}
           <div className="mb-10">
+            {/* Cover image banner */}
+            {(active.coverImg||owner)&&(
+              <div className="relative w-full h-40 md:h-56 rounded-2xl overflow-hidden mb-8 bg-gradient-to-br from-slate-200 to-[#eef1f3] group">
+                {active.coverImg
+                  ? <img src={active.coverImg} alt="" className="w-full h-full object-cover"/>
+                  : <div className="w-full h-full flex items-center justify-center text-slate-400"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
+                }
+                {owner&&(
+                  <label className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/40 transition-all cursor-pointer group/lbl">
+                    <span className="opacity-0 group-hover/lbl:opacity-100 transition-opacity flex items-center gap-2 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-xl text-xs font-black text-[#2c2f31] uppercase tracking-wider shadow-lg">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                      {active.coverImg?'Change Cover':'Upload Cover'}
+                    </span>
+                    <input type="file" accept="image/*" className="hidden" onChange={e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=ev=>setCourses(p=>p.map(c=>c.id===active.id?{...c,coverImg:ev.target?.result as string}:c));r.readAsDataURL(f)}}/>
+                  </label>
+                )}
+              </div>
+            )}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div className="flex-1">
                 {owner
@@ -957,21 +975,24 @@ export default function Home(){
               </div>
             )}
             {myCourses.map(c=>(
-              <article key={c.id} onClick={()=>setActiveId(c.id)} className="bg-white rounded-2xl p-5 cursor-pointer shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-transparent hover:border-red-100 hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] transition-all group">
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[10px] font-black uppercase tracking-[0.08em] text-slate-500 bg-[#eef1f3] px-2 py-1 rounded-lg">{c.category}</span>
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{c.isPublic?'🌐 Public':'🔒 Private'}</span>
-                    {!c.active&&<span className="text-[10px] font-black text-red-400 uppercase tracking-wider">Inactive</span>}
+              <article key={c.id} onClick={()=>setActiveId(c.id)} className="bg-white rounded-2xl overflow-hidden cursor-pointer shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-transparent hover:border-red-100 hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] transition-all group">
+                {c.coverImg&&<div className="h-28 overflow-hidden"><img src={c.coverImg} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/></div>}
+                <div className="p-5">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] font-black uppercase tracking-[0.08em] text-slate-500 bg-[#eef1f3] px-2 py-1 rounded-lg">{c.category}</span>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{c.isPublic?'🌐 Public':'🔒 Private'}</span>
+                      {!c.active&&<span className="text-[10px] font-black text-red-400 uppercase tracking-wider">Inactive</span>}
+                    </div>
                   </div>
+                  <h2 className="text-xl font-black tracking-tight text-[#2c2f31] mb-3 group-hover:text-[#FF0000] transition-colors">{c.name}</h2>
+                  {c.description&&<p className="text-sm text-slate-500 mb-3 line-clamp-2 font-medium leading-relaxed">{c.description}</p>}
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{c.modules.length} mod · {cVC(c)} vid · {fmtS(cDur(c))} · 👥 {c.enrolledBy?.length||0}</p>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-slate-300 group-hover:text-[#FF0000] transition-colors"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                  {cVC(c)>0&&<div className="mt-3"><PBar done={cComp(c)} total={cVC(c)}/></div>}
                 </div>
-                <h2 className="text-xl font-black tracking-tight text-[#2c2f31] mb-3 group-hover:text-[#FF0000] transition-colors">{c.name}</h2>
-                {c.description&&<p className="text-sm text-slate-500 mb-3 line-clamp-2 font-medium leading-relaxed">{c.description}</p>}
-                <div className="flex items-center justify-between">
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{c.modules.length} mod · {cVC(c)} vid · {fmtS(cDur(c))} · 👥 {c.enrolledBy?.length||0}</p>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-slate-300 group-hover:text-[#FF0000] transition-colors"><polyline points="9 18 15 12 9 6"/></svg>
-                </div>
-                {cVC(c)>0&&<div className="mt-3"><PBar done={cComp(c)} total={cVC(c)}/></div>}
               </article>
             ))}
             <button onClick={()=>{setModal('newCourse');setInputVal('');setDescVal('');setCatVal(CATEGORIES[0]);setCoverVal('')}} className="w-full py-4 rounded-2xl text-sm font-black bg-[#FF0000] text-white hover:bg-red-700 shadow-[0_4px_16px_rgba(255,0,0,0.2)] transition-all uppercase tracking-wider">+ Create New Course</button>
@@ -984,13 +1005,16 @@ export default function Home(){
             {enrolledCourses.length===0
               ? <div className="bg-white rounded-2xl p-10 text-center shadow-[0_4px_20px_rgba(0,0,0,0.03)]"><p className="text-sm text-slate-400 font-medium">No enrolled courses yet</p></div>
               : enrolledCourses.map(c=>(
-                  <article key={c.id} onClick={()=>setActiveId(c.id)} className="bg-white rounded-2xl p-5 cursor-pointer shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-transparent hover:border-red-100 hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] transition-all group">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-[10px] font-black uppercase tracking-[0.08em] text-slate-500 bg-[#eef1f3] px-2 py-1 rounded-lg">{c.category}</span>
+                  <article key={c.id} onClick={()=>setActiveId(c.id)} className="bg-white rounded-2xl overflow-hidden cursor-pointer shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-transparent hover:border-red-100 hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] transition-all group">
+                    {c.coverImg&&<div className="h-28 overflow-hidden"><img src={c.coverImg} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/></div>}
+                    <div className="p-5">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-[10px] font-black uppercase tracking-[0.08em] text-slate-500 bg-[#eef1f3] px-2 py-1 rounded-lg">{c.category}</span>
+                      </div>
+                      <h2 className="text-xl font-black tracking-tight text-[#2c2f31] mb-1 group-hover:text-[#FF0000] transition-colors">{c.name}</h2>
+                      <p className="text-[11px] font-bold text-slate-400 mb-3 uppercase tracking-wider">by arc/{c.ownerHandle} · {cVC(c)} vid · {fmtS(cDur(c))}</p>
+                      {cVC(c)>0&&<PBar done={cComp(c)} total={cVC(c)}/>}
                     </div>
-                    <h2 className="text-xl font-black tracking-tight text-[#2c2f31] mb-1 group-hover:text-[#FF0000] transition-colors">{c.name}</h2>
-                    <p className="text-[11px] font-bold text-slate-400 mb-3 uppercase tracking-wider">by arc/{c.ownerHandle} · {cVC(c)} vid · {fmtS(cDur(c))}</p>
-                    {cVC(c)>0&&<PBar done={cComp(c)} total={cVC(c)}/>}
                   </article>
                 ))
             }
@@ -1161,12 +1185,17 @@ export default function Home(){
               <select value={catVal} onChange={e=>setCatVal(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-[#eef1f3] bg-[#f5f7f9] text-xs font-bold text-[#2c2f31] focus:outline-none">
                 {CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
               </select>
-              {/* Cover image URL — required to activate */}
+              {/* Cover image upload — required */}
               <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5 block">Cover Image URL <span className="text-[#FF0000]">*</span></label>
-                <input value={coverVal} onChange={e=>setCoverVal(e.target.value)} placeholder="https://..." className="w-full px-4 py-3 rounded-xl border border-[#eef1f3] bg-[#f5f7f9] text-xs text-[#2c2f31] focus:outline-none focus:ring-2 focus:ring-red-200"/>
-                {coverVal&&<img src={coverVal} alt="" className="mt-2 w-full h-28 object-cover rounded-xl border border-[#eef1f3]" onError={e=>{(e.target as HTMLImageElement).style.display='none'}}/>}
-                <p className="text-[10px] text-slate-400 mt-1 font-medium">Required to publish your course</p>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5 block">Cover Image <span className="text-[#FF0000]">*</span></label>
+                <label className={`flex flex-col items-center justify-center w-full h-32 rounded-xl border-2 border-dashed cursor-pointer transition-all overflow-hidden relative ${coverVal?'border-[#FF0000]/30':'border-[#eef1f3] hover:border-[#FF0000]/30 hover:bg-red-50/30'}`}>
+                  {coverVal
+                    ? <><img src={coverVal} alt="" className="absolute inset-0 w-full h-full object-cover"/><div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"><span className="text-white text-xs font-black uppercase tracking-wider">Change Photo</span></div></>
+                    : <div className="flex flex-col items-center gap-2 text-slate-400"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span className="text-xs font-black uppercase tracking-wider">Upload Cover Photo</span><span className="text-[10px]">JPG, PNG, WEBP</span></div>
+                  }
+                  <input type="file" accept="image/*" className="hidden" onChange={e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=ev=>setCoverVal(ev.target?.result as string);r.readAsDataURL(f)}}/>
+                </label>
+                <p className="text-[10px] text-slate-400 mt-1 font-medium">Required to create your course</p>
               </div>
               <div className="flex justify-end gap-2 pt-1">
                 <button onClick={()=>createCourse(false)} disabled={!inputVal.trim()||!coverVal.trim()} className="px-5 py-3 rounded-xl text-xs font-black text-slate-500 hover:bg-[#f5f7f9] disabled:opacity-40 border border-[#eef1f3] uppercase tracking-wider">🔒 Private</button>
