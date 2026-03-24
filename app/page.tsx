@@ -507,12 +507,22 @@ export default function Home(){
             </button>
           : !otpSent
             ? <div className="space-y-3">
+                <div className="bg-[#f5f7f9] rounded-xl px-4 py-3 border border-[#eef1f3]">
+                  <p className="text-[11px] text-slate-500 leading-relaxed">No password needed! We&apos;ll send you a secure link to your email. Just click it and you&apos;re in.</p>
+                </div>
                 <input value={emailInput} onChange={e=>setEmailInput(e.target.value)} placeholder="your@email.com" className="w-full px-4 py-3 rounded-xl border border-[#eef1f3] bg-[#f5f7f9] text-sm text-[#2c2f31] focus:outline-none focus:ring-2 focus:ring-red-200"/>
                 <button onClick={signInEmail} disabled={!emailInput.trim()||authLoading} className="w-full py-3 rounded-xl text-sm font-black bg-[#FF0000] text-white disabled:opacity-40">{authLoading?'Sending...':'Send magic link'}</button>
               </div>
-            : <div className="space-y-3">
-                <p className="text-xs text-slate-500">Check your email for a sign-in link</p>
-                <button onClick={()=>setOtpSent(false)} className="text-xs text-[#FF0000] hover:underline font-bold">Use a different email</button>
+            : <div className="space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+                </div>
+                <h3 className="text-base font-black text-[#2c2f31]">Check your inbox!</h3>
+                <p className="text-sm text-slate-500 leading-relaxed">We sent a sign-in link to <strong className="text-[#2c2f31]">{emailInput}</strong>. Click the link in the email to access your account.</p>
+                <div className="bg-[#f5f7f9] rounded-xl px-4 py-3 border border-[#eef1f3]">
+                  <p className="text-[11px] text-slate-400 leading-relaxed">Don&apos;t see it? Check your spam folder. The link expires in 24 hours.</p>
+                </div>
+                <button onClick={()=>setOtpSent(false)} className="text-xs text-[#FF0000] hover:underline font-bold">Try a different email</button>
               </div>
         }
         {authError&&<p className="text-xs text-red-500 mt-3 font-medium">{authError}</p>}
