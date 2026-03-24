@@ -1,0 +1,526 @@
+{
+  "id": "seed_resolve_1774276420389",
+  "name": "Cinematic Resolve Masterclass",
+  "description": "Go beyond simple cuts. Master professional color grading workflows, Fairlight audio post-production, and Fusion VFX in DaVinci Resolve.",
+  "category": "Video Editing",
+  "isPublic": true,
+  "active": true,
+  "owner": "Course Architect",
+  "ownerHandle": "coursearchitect",
+  "ownerImg": "",
+  "enrolledBy": [],
+  "shareCode": "RSV-PRO",
+  "createdAt": 1774276420389,
+  "modules": [
+    {
+      "id": "mod_1_1774276420389",
+      "name": "The Professional Workflow & Media Management",
+      "createdAt": 1774276420389,
+      "subs": [
+        {
+          "id": "sub_2_1774276420389",
+          "name": "Setting Up for Success",
+          "createdAt": 1774276420389,
+          "videos": [
+            {
+              "id": "qTCknbS5Xhc",
+              "title": "Must Know Tip! - Project Settings in DaVinci Resolve (Presets)",
+              "thumbnail": "https://i.ytimg.com/vi/qTCknbS5Xhc/hqdefault.jpg",
+              "channel": "Creative Video Tips",
+              "channelImg": "https://yt3.ggpht.com/ytc/AIdro_m66Yd-kyeYvZLNJSVcDMpt2XIK0jbVyT1PbIlVoIOqhg=s88-c-k-c0x00ffffff-no-rj",
+              "subscribers": "95.1K",
+              "views": "102,014",
+              "viewsShort": "102K",
+              "likes": "3,011",
+              "likesShort": "3K",
+              "duration": "3:51",
+              "url": "https://www.youtube.com/watch?v=qTCknbS5Xhc",
+              "iid": "seed_qTCknbS5Xhc",
+              "completed": false,
+              "notes": [],
+              "votes": 0,
+              "votedBy": []
+            }
+          ]
+        },
+        {
+          "id": "sub_3_1774276420389",
+          "name": "Proxy Workflow & Optimized Media",
+          "createdAt": 1774276420389,
+          "videos": [
+            {
+              "id": "QTAAmCg6zUQ",
+              "title": "DaVinci Resolve Proxy Workflow In 3 Minutes",
+              "thumbnail": "https://i.ytimg.com/vi/QTAAmCg6zUQ/hqdefault.jpg",
+              "channel": "JayAreTV",
+              "channelImg": "https://yt3.ggpht.com/wm49NbH6HsxMqFghEGyMCU-p7TnLvdOKl5TjcVA-PH5zV-C8yxt1gotpwIQeiCq9FdZOcF1Z0g=s88-c-k-c0x00ffffff-no-rj",
+              "subscribers": "94.5K",
+              "views": "5,557",
+              "viewsShort": "5.6K",
+              "likes": "186",
+              "likesShort": "186",
+              "duration": "3:01",
+              "url": "https://www.youtube.com/watch?v=QTAAmCg6zUQ",
+              "iid": "seed_QTAAmCg6zUQ",
+              "completed": false,
+              "notes": [],
+              "votes": 0,
+              "votedBy": []
+            }
+          ]
+        },
+        {
+          "id": "sub_4_1774276420389",
+          "name": "Smart Bins & Organization",
+          "createdAt": 1774276420389,
+          "videos": [
+            {
+              "id": "KTiRe_XrrNc",
+              "title": "Edit FASTER using Power Bins! - DaVinci Resolve for NOOBS! - Tip #51",
+              "thumbnail": "https://i.ytimg.com/vi/KTiRe_XrrNc/hqdefault.jpg",
+              "channel": "Daniel Batal",
+              "channelImg": "https://yt3.ggpht.com/ytc/AIdro_nZNgEk4FOW-_WBFRK-4x8jqUffppgipPCBoJbseehRe9Q=s88-c-k-c0x00ffffff-no-rj",
+              "subscribers": "554K",
+              "views": "82,722",
+              "viewsShort": "82.7K",
+              "likes": "3,701",
+              "likesShort": "3.7K",
+              "duration": "0:33",
+              "url": "https://www.youtube.com/watch?v=KTiRe_XrrNc",
+              "iid": "seed_KTiRe_XrrNc",
+              "completed": false,
+              "notes": [],
+              "votes": 0,
+              "votedBy": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mod_5_1774276420389",
+      "name": "Advanced Editing Techniques",
+      "createdAt": 1774276420389,
+      "subs": [
+        {
+          "id": "sub_6_1774276420389",
+          "name": "Dynamic Trimming & J-K-L Editing",
+          "createdAt": 1774276420389,
+          "videos": [
+            {
+              "id": "BoH4nZIzEj8",
+              "title": "How To CUT And TRIM Video In Davinci Resolve",
+              "thumbnail": "https://i.ytimg.com/vi/BoH4nZIzEj8/hqdefault.jpg",
+              "channel": "Davinci Made Simple",
+              "channelImg": "https://yt3.ggpht.com/w-j5MiJoGVMJnMv_HS6PaQ7oeOSKEI-89_HfWgCrPjC1gBKtNUpX6iuhL9XFzRdKzwHaA5-Jr2g=s88-c-k-c0x00ffffff-no-rj",
+              "subscribers": "58.4K",
+              "views": "229,068",
+              "viewsShort": "229.1K",
+              "likes": "2,706",
+              "likesShort": "2.7K",
+              "duration": "0:49",
+              "url": "https://www.youtube.com/watch?v=BoH4nZIzEj8",
+              "iid": "seed_BoH4nZIzEj8",
+              "completed": false,
+              "notes": [],
+              "votes": 0,
+              "votedBy": []
+            }
+          ]
+        },
+        {
+          "id": "sub_7_1774276420389",
+          "name": "Multicam Editing",
+          "createdAt": 1774276420389,
+          "videos": [
+            {
+              "id": "WgzUvtRgeCM",
+              "title": "How to Edit with Multiple Camera Angles in DaVinci Resolve 20 | Multicam Editing",
+              "thumbnail": "https://i.ytimg.com/vi/WgzUvtRgeCM/hqdefault.jpg",
+              "channel": "DaVinci Dojo",
+              "channelImg": "https://yt3.ggpht.com/fcW9k1uSIDc9fNSI3P2mj1aZwq6MW2vIEribk-YtHO8Ajj0tVnfMaIgwd7qK66qqXKL_P8zZa8M=s88-c-k-c0x00ffffff-no-rj",
+              "subscribers": "4.6K",
+              "views": "41,729",
+              "viewsShort": "41.7K",
+              "likes": "1,243",
+              "likesShort": "1.2K",
+              "duration": "10:07",
+              "url": "https://www.youtube.com/watch?v=WgzUvtRgeCM",
+              "iid": "seed_WgzUvtRgeCM",
+              "completed": false,
+              "notes": [],
+              "votes": 0,
+              "votedBy": []
+            }
+          ]
+        },
+        {
+          "id": "sub_8_1774276420389",
+          "name": "Speed Ramps & Time Remapping",
+          "createdAt": 1774276420389,
+          "videos": [
+            {
+              "id": "tLV-EckSDdY",
+              "title": "NEW Speed Ramping in Davinci Resolve! | Full Tutorial (v20.1)",
+              "thumbnail": "https://i.ytimg.com/vi/tLV-EckSDdY/hqdefault.jpg",
+              "channel": "Joel Van Beek",
+              "channelImg": "https://yt3.ggpht.com/Op4UYsSK8iLmQL7vjOE1DpJmfxBnMAqmAb9BPLNaIBN9yB56Jw2aLt21wj-ZTkcfXO8RNxux=s88-c-k-c0x00ffffff-no-rj",
+              "subscribers": "35.9K",
+              "views": "119,989",
+              "viewsShort": "120K",
+              "likes": "5,840",
+              "likesShort": "5.8K",
+              "duration": "16:16",
+              "url": "https://www.youtube.com/watch?v=tLV-EckSDdY",
+              "iid": "seed_tLV-EckSDdY",
+              "completed": false,
+              "notes": [],
+              "votes": 0,
+              "votedBy": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mod_9_1774276420389",
+      "name": "Color Correction",
+      "createdAt": 1774276420389,
+      "subs": [
+        {
+          "id": "sub_10_1774276420389",
+          "name": "Reading Scopes & Balancing",
+          "createdAt": 1774276420389,
+          "videos": [
+            {
+              "id": "sBPi9e6XC2A",
+              "title": "A Quick Beginner's Guide to SCOPES in Resolve",
+              "thumbnail": "https://i.ytimg.com/vi/sBPi9e6XC2A/hqdefault.jpg",
+              "channel": "Waqas Qazi",
+              "channelImg": "https://yt3.ggpht.com/-6ikUevCmnZQY7iBUdU5VJpFAmsSEoWQulSrTE9It-C6tnxZhhxO2_uOozQfjGvx9ZyFEzCUyg=s88-c-k-c0x00ffffff-no-rj",
+              "subscribers": "487K",
+              "views": "69,058",
+              "viewsShort": "69.1K",
+              "likes": "2,145",
+              "likesShort": "2.1K",
+              "duration": "7:04",
+              "url": "https://www.youtube.com/watch?v=sBPi9e6XC2A",
+              "iid": "seed_sBPi9e6XC2A",
+              "completed": false,
+              "notes": [],
+              "votes": 0,
+              "votedBy": []
+            }
+          ]
+        },
+        {
+          "id": "sub_11_1774276420389",
+          "name": "Parallel & Layer Nodes",
+          "createdAt": 1774276420389,
+          "videos": [
+            {
+              "id": "jBq8refj7cc",
+              "title": "The ONLY NODE STRUCTURE you'll ever need!",
+              "thumbnail": "https://i.ytimg.com/vi/jBq8refj7cc/hqdefault.jpg",
+              "channel": "Runhaar",
+              "channelImg": "https://yt3.ggpht.com/Slvm4H-KFb0fUwhIy8xyIC40jMSizAXZBW0EyDnTDdApmjPVCt1153OhXo1MRNky4jzwphPT=s88-c-k-c0x00ffffff-no-rj",
+              "subscribers": "20.3K",
+              "views": "487,450",
+              "viewsShort": "487.4K",
+              "likes": "23,145",
+              "likesShort": "23.1K",
+              "duration": "10:40",
+              "url": "https://www.youtube.com/watch?v=jBq8refj7cc",
+              "iid": "seed_jBq8refj7cc",
+              "completed": false,
+              "notes": [],
+              "votes": 0,
+              "votedBy": []
+            }
+          ]
+        },
+        {
+          "id": "sub_12_1774276420389",
+          "name": "Skin Tone Accuracy",
+          "createdAt": 1774276420389,
+          "videos": [
+            {
+              "id": "ngs2vZri2YI",
+              "title": "How to use the HSL Qualifier for your Skin Tones for PERFECT Skin Tone Isolation in Davinci Resolve",
+              "thumbnail": "https://i.ytimg.com/vi/ngs2vZri2YI/hqdefault.jpg",
+              "channel": "Caleb Oshi",
+              "channelImg": "https://yt3.ggpht.com/2QrCw9ju0UEs8_XrZaimgYscmD00VurqfhDT8DoLmwGc83qjduQiRuIRXejTlGns_n470YPWaA=s88-c-k-c0x00ffffff-no-rj",
+              "subscribers": "2.3K",
+              "views": "46,854",
+              "viewsShort": "46.9K",
+              "likes": "1,708",
+              "likesShort": "1.7K",
+              "duration": "1:13",
+              "url": "https://www.youtube.com/watch?v=ngs2vZri2YI",
+              "iid": "seed_ngs2vZri2YI",
+              "completed": false,
+              "notes": [],
+              "votes": 0,
+              "votedBy": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mod_13_1774276420389",
+      "name": "Cinematic Color Grading",
+      "createdAt": 1774276420389,
+      "subs": [
+        {
+          "id": "sub_14_1774276420389",
+          "name": "Teal & Orange Look",
+          "createdAt": 1774276420389,
+          "videos": [
+            {
+              "id": "hmNzzm9zafE",
+              "title": "TEAL and ORANGE DAVINCI RESOLVE COLOR GRADING under 5 MINUTES - without Luts!",
+              "thumbnail": "https://i.ytimg.com/vi/hmNzzm9zafE/hqdefault.jpg",
+              "channel": "Paule Porter ",
+              "channelImg": "https://yt3.ggpht.com/WxHkcP_Qm9gs0wyKSEuRh5M4ERJAcdVp0tJZkyt1ckB2OKkfon3gyPoJDDU_ut-Ca4nj5U91onY=s88-c-k-c0x00ffffff-no-rj",
+              "subscribers": "13.5K",
+              "views": "105,495",
+              "viewsShort": "105.5K",
+              "likes": "3,012",
+              "likesShort": "3K",
+              "duration": "4:49",
+              "url": "https://www.youtube.com/watch?v=hmNzzm9zafE",
+              "iid": "seed_hmNzzm9zafE",
+              "completed": false,
+              "notes": [],
+              "votes": 0,
+              "votedBy": []
+            }
+          ]
+        },
+        {
+          "id": "sub_15_1774276420389",
+          "name": "LUTs vs Manual Grading",
+          "createdAt": 1774276420389,
+          "videos": [
+            {
+              "id": "oJ0eI4tMOTA",
+              "title": "How to Use LUTs in Davinci Resolve | Quick Tutorial",
+              "thumbnail": "https://i.ytimg.com/vi/oJ0eI4tMOTA/hqdefault.jpg",
+              "channel": "Joris Hermans",
+              "channelImg": "https://yt3.ggpht.com/IKj987JRFwTZ8BFWQ0M8oRI9AGdG_69xEkPvdUoLevCHc577cK1ZH_h_g4s3nZUpupajSNoG=s88-c-k-c0x00ffffff-no-rj",
+              "subscribers": "399K",
+              "views": "390,594",
+              "viewsShort": "390.6K",
+              "likes": "8,637",
+              "likesShort": "8.6K",
+              "duration": "3:34",
+              "url": "https://www.youtube.com/watch?v=oJ0eI4tMOTA",
+              "iid": "seed_oJ0eI4tMOTA",
+              "completed": false,
+              "notes": [],
+              "votes": 0,
+              "votedBy": []
+            }
+          ]
+        },
+        {
+          "id": "sub_16_1774276420389",
+          "name": "Film Grain & Halation",
+          "createdAt": 1774276420389,
+          "videos": [
+            {
+              "id": "6mHLCqcU9Ec",
+              "title": "The best Film Grain OFX for DaVinci Resolve 20",
+              "thumbnail": "https://i.ytimg.com/vi/6mHLCqcU9Ec/hqdefault.jpg",
+              "channel": "Waqas Qazi",
+              "channelImg": "https://yt3.ggpht.com/-6ikUevCmnZQY7iBUdU5VJpFAmsSEoWQulSrTE9It-C6tnxZhhxO2_uOozQfjGvx9ZyFEzCUyg=s88-c-k-c0x00ffffff-no-rj",
+              "subscribers": "487K",
+              "views": "18,441",
+              "viewsShort": "18.4K",
+              "likes": "918",
+              "likesShort": "918",
+              "duration": "1:18",
+              "url": "https://www.youtube.com/watch?v=6mHLCqcU9Ec",
+              "iid": "seed_6mHLCqcU9Ec",
+              "completed": false,
+              "notes": [],
+              "votes": 0,
+              "votedBy": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mod_17_1774276420389",
+      "name": "Fusion VFX & Motion Graphics",
+      "createdAt": 1774276420389,
+      "subs": [
+        {
+          "id": "sub_18_1774276420389",
+          "name": "Node-Based Compositing",
+          "createdAt": 1774276420389,
+          "videos": [
+            {
+              "id": "NijKYuHCssY",
+              "title": "Fusion Nodes Made Easy in DaVinci Resolve",
+              "thumbnail": "https://i.ytimg.com/vi/NijKYuHCssY/hqdefault.jpg",
+              "channel": "Creator Sergeant - Julian Woldan",
+              "channelImg": "https://yt3.ggpht.com/fOmfD5Tu8WKvqpgJu3SWGCJqPedX6NrpsFLo6i4pAVF5u_0vjkoMn8-0EAHpp0qauWL2D35jGE0=s88-c-k-c0x00ffffff-no-rj",
+              "subscribers": "31.8K",
+              "views": "57,076",
+              "viewsShort": "57.1K",
+              "likes": "4,300",
+              "likesShort": "4.3K",
+              "duration": "10:01",
+              "url": "https://www.youtube.com/watch?v=NijKYuHCssY",
+              "iid": "seed_NijKYuHCssY",
+              "completed": false,
+              "notes": [],
+              "votes": 0,
+              "votedBy": []
+            }
+          ]
+        },
+        {
+          "id": "sub_19_1774276420389",
+          "name": "Motion Tracking & Object Removal",
+          "createdAt": 1774276420389,
+          "videos": [
+            {
+              "id": "hUM88jlUTgo",
+              "title": "Motion Tracking in DaVinci Resolve | Beginner Fusion Tutorial",
+              "thumbnail": "https://i.ytimg.com/vi/hUM88jlUTgo/hqdefault.jpg",
+              "channel": "Envato Tuts+",
+              "channelImg": "https://yt3.ggpht.com/M5vM7P_DF_hQzNDgwUWJKy9x-vofZQA1kUAMWs5EG1cOFXdbtU9IrTCKj3iubgfU3_uX01ji1Q=s88-c-k-c0x00ffffff-no-rj",
+              "subscribers": "1.7M",
+              "views": "196,758",
+              "viewsShort": "196.8K",
+              "likes": "2,938",
+              "likesShort": "2.9K",
+              "duration": "11:53",
+              "url": "https://www.youtube.com/watch?v=hUM88jlUTgo",
+              "iid": "seed_hUM88jlUTgo",
+              "completed": false,
+              "notes": [],
+              "votes": 0,
+              "votedBy": []
+            }
+          ]
+        },
+        {
+          "id": "sub_20_1774276420389",
+          "name": "3D Text & Title Design",
+          "createdAt": 1774276420389,
+          "videos": [
+            {
+              "id": "rx591Kh3IpU",
+              "title": "Simple 3D Text Title in Fusion - DaVinci Resolve Fusion Tutorials for Beginners",
+              "thumbnail": "https://i.ytimg.com/vi/rx591Kh3IpU/hqdefault.jpg",
+              "channel": "Casey Faris",
+              "channelImg": "https://yt3.ggpht.com/VSQ7AFVGD7hrYxNSE_r4ifvBWGnUCljWZfI_tZcZaDUR9zjiAjUTErmsUANrCEtEYeNO3O54fQ=s88-c-k-c0x00ffffff-no-rj",
+              "subscribers": "596K",
+              "views": "24,653",
+              "viewsShort": "24.7K",
+              "likes": "806",
+              "likesShort": "806",
+              "duration": "6:42",
+              "url": "https://www.youtube.com/watch?v=rx591Kh3IpU",
+              "iid": "seed_rx591Kh3IpU",
+              "completed": false,
+              "notes": [],
+              "votes": 0,
+              "votedBy": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mod_21_1774276420389",
+      "name": "Fairlight Audio Post-Production",
+      "createdAt": 1774276420389,
+      "subs": [
+        {
+          "id": "sub_22_1774276420389",
+          "name": "EQ & Compression for Voiceovers",
+          "createdAt": 1774276420389,
+          "videos": [
+            {
+              "id": "4JWvb8mjwY4",
+              "title": "Equalizer EQ - DaVinci Resolve for NOOBS! - Tip #5",
+              "thumbnail": "https://i.ytimg.com/vi/4JWvb8mjwY4/hqdefault.jpg",
+              "channel": "Daniel Batal",
+              "channelImg": "https://yt3.ggpht.com/ytc/AIdro_nZNgEk4FOW-_WBFRK-4x8jqUffppgipPCBoJbseehRe9Q=s88-c-k-c0x00ffffff-no-rj",
+              "subscribers": "554K",
+              "views": "216,459",
+              "viewsShort": "216.5K",
+              "likes": "7,567",
+              "likesShort": "7.6K",
+              "duration": "0:42",
+              "url": "https://www.youtube.com/watch?v=4JWvb8mjwY4",
+              "iid": "seed_4JWvb8mjwY4",
+              "completed": false,
+              "notes": [],
+              "votes": 0,
+              "votedBy": []
+            }
+          ]
+        },
+        {
+          "id": "sub_23_1774276420389",
+          "name": "Noise Reduction & Audio Repair",
+          "createdAt": 1774276420389,
+          "videos": [
+            {
+              "id": "J_1JdaomBuc",
+              "title": "Easy Noise Reduction in DaVinci Resolve | Fairlight Tutorial",
+              "thumbnail": "https://i.ytimg.com/vi/J_1JdaomBuc/hqdefault.jpg",
+              "channel": "MASV",
+              "channelImg": "https://yt3.ggpht.com/jKCcrxWymB7KzrpPnx5Ij0ZzdMbH2OmXttljPKtPjG-ysXS8E4XLDF4ta3VSsrTYAuI9udla=s88-c-k-c0x00ffffff-no-rj",
+              "subscribers": "5K",
+              "views": "19,698",
+              "viewsShort": "19.7K",
+              "likes": "283",
+              "likesShort": "283",
+              "duration": "7:04",
+              "url": "https://www.youtube.com/watch?v=J_1JdaomBuc",
+              "iid": "seed_J_1JdaomBuc",
+              "completed": false,
+              "notes": [],
+              "votes": 0,
+              "votedBy": []
+            }
+          ]
+        },
+        {
+          "id": "sub_24_1774276420389",
+          "name": "Sound Design & Foley",
+          "createdAt": 1774276420389,
+          "videos": [
+            {
+              "id": "sxLz6r-Vqms",
+              "title": "DaVinci Resolve's Fairlight Page for COMPLETE NOOBS!",
+              "thumbnail": "https://i.ytimg.com/vi/sxLz6r-Vqms/hqdefault.jpg",
+              "channel": "Daniel Batal",
+              "channelImg": "https://yt3.ggpht.com/ytc/AIdro_nZNgEk4FOW-_WBFRK-4x8jqUffppgipPCBoJbseehRe9Q=s88-c-k-c0x00ffffff-no-rj",
+              "subscribers": "554K",
+              "views": "33,293",
+              "viewsShort": "33.3K",
+              "likes": "1,561",
+              "likesShort": "1.6K",
+              "duration": "36:20",
+              "url": "https://www.youtube.com/watch?v=sxLz6r-Vqms",
+              "iid": "seed_sxLz6r-Vqms",
+              "completed": false,
+              "notes": [],
+              "votes": 0,
+              "votedBy": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
