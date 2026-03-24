@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+import * as sync from '@/lib/useSupabaseSync'
 import dynamic from 'next/dynamic'
 import { formatDistanceToNow } from 'date-fns'
 const YouTubePlayer = dynamic(() => import('@/components/YouTubePlayer'), { ssr: false })
@@ -277,7 +278,12 @@ export default function Home(){
   const[enrollModal,setEnrollModal]=useState(false)
   const ytRef=useRef<any>(null)
 
-  useEffect(()=>{if(courses.length===0){fetch("/data/course-resolve.json").then(r=>r.json()).then(d=>{if(d&&d.id)setCourses(prev=>[...prev,d])}).catch(()=>{})}},[] )
+  useEffect(()=>{
+    if(!user||!handle) return
+    sync.loadCoursesFromDB(user.id, handle).then(loaded=>{
+      if(loaded.length>0) setCourses(loaded)
+    }).catch(console.error)
+  },[user, handle])
   const active=courses.find(c=>c.id===activeId)
   const togColl=(id:string)=>setColl(p=>({...p,[id]:!p[id]}))
   const upC=(fn:(c:Course)=>Course)=>setCourses(p=>p.map(c=>c.id===activeId?fn(c):c))
@@ -313,44 +319,137 @@ export default function Home(){
   }
 
   useEffect(()=>{supabase.auth.getSession().then(({data:{session}})=>{setUser(session?.user??null);setLoading(false)});const{data:{subscription}}=supabase.auth.onAuthStateChange((_e,session)=>{setUser(session?.user??null);setLoading(false)});return()=>subscription.unsubscribe()},[] )
-  useEffect(()=>{const ca=localStorage.getItem('arc_avatar');if(ca)setCustomAvatar(ca);const h=localStorage.getItem('arc_handle');if(h)setHandle(h);else if(user){const name=user.user_metadata?.full_name||user.email?.split('@')[0]||'user';const auto=name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,15)+Math.floor(Math.random()*99);saveHandle(auto)};const pc=localStorage.getItem('arc_preferred_creator');if(pc)setPreferredCreator(pc)},[user])
-  const saveHandle=(h:string)=>{setHandle(h);localStorage.setItem('arc_handle',h)}
+  useEffect(()=>{
+    const ca=localStorage.getItem('arc_avatar');if(ca)setCustomAvatar(ca)
+    const pc=localStorage.getItem('arc_preferred_creator');if(pc)setPreferredCreator(pc)
+    if(!user) return
+    sync.getHandleFromDB(user.id).then(dbHandle=>{
+      if(dbHandle){
+        setHandle(dbHandle)
+        localStorage.setItem('arc_handle',dbHandle)
+      } else {
+        const h=localStorage.getItem('arc_handle')
+        if(h){setHandle(h); sync.saveHandleToDB(user.id,h)}
+        else {
+          const name=user.user_metadata?.full_name||user.email?.split('@')[0]||'user'
+          const auto=name.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,15)+Math.floor(Math.random()*99)
+          saveHandle(auto)
+        }
+      }
+    })
+  },[user])
+  const saveHandle=async(h:string)=>{
+    setHandle(h)
+    localStorage.setItem('arc_handle',h)
+    if(user) await sync.saveHandleToDB(user.id, h)
+  }
 
   const signInGoogle=async()=>{await supabase.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.origin}})}
   const signInEmail=async()=>{if(!emailInput.trim())return;setAuthLoading(true);setAuthError('');const{error}=await supabase.auth.signInWithOtp({email:emailInput.trim()});if(error)setAuthError(error.message);else setOtpSent(true);setAuthLoading(false)}
   const signOut=async()=>{await supabase.auth.signOut();setUser(null)}
 
-  const createCourse=(pub:boolean)=>{if(!inputVal.trim())return;const c:Course={id:uid(),name:inputVal.trim(),description:descVal.trim(),modules:[],isPublic:pub,active:true,owner:userName,ownerHandle:userHandle,ownerImg:userImg,coverImg:coverVal.trim(),category:catVal,enrolledBy:[],shareCode:genCode(),createdAt:Date.now()};setCourses(p=>[...p,c]);setActiveId(c.id);setModal(null);setInputVal('');setDescVal('')}
-  const delCourse=(id:string)=>{setCourses(p=>p.filter(c=>c.id!==id));if(activeId===id)setActiveId(null);setDeleteTarget(null)}
+  const createCourse=async(pub:boolean)=>{
+    if(!inputVal.trim()||!user)return
+    const dbCourse = await sync.saveCourseToDB({
+      id:'',name:inputVal.trim(),description:descVal.trim(),modules:[],isPublic:pub,
+      active:true,owner:userName,ownerHandle:userHandle,ownerImg:userImg,
+      coverImg:coverVal.trim(),category:catVal,enrolledBy:[],shareCode:'',createdAt:Date.now()
+    } as any, user.id)
+    if(!dbCourse) return
+    const c:Course={
+      id:dbCourse.id,name:inputVal.trim(),description:descVal.trim(),modules:[],
+      isPublic:pub,active:true,owner:userName,ownerHandle:userHandle,ownerImg:userImg,
+      coverImg:coverVal.trim(),category:catVal,enrolledBy:[],
+      shareCode:dbCourse.share_code||genCode(),createdAt:Date.now()
+    }
+    setCourses(p=>[...p,c]);setActiveId(c.id);setModal(null);setInputVal('');setDescVal('')
+  }
+  const delCourse=async(id:string)=>{
+    await sync.deleteCourseFromDB(id)
+    setCourses(p=>p.filter(c=>c.id!==id));if(activeId===id)setActiveId(null);setDeleteTarget(null)
+  }
   const toggleActive=(id:string)=>setCourses(p=>p.map(c=>c.id===id?{...c,active:!c.active}:c))
-  const enrollCourse=(id:string)=>setCourses(p=>p.map(c=>c.id===id?{...c,enrolledBy:[...c.enrolledBy.filter(e=>e!==userHandle),userHandle]}:c))
-  const unenrollCourse=(id:string)=>setCourses(p=>p.map(c=>c.id===id?{...c,enrolledBy:c.enrolledBy.filter(e=>e!==userHandle)}:c))
+  const enrollCourse=async(id:string)=>{
+    if(user) await sync.enrollInDB(user.id, id)
+    setCourses(p=>p.map(c=>c.id===id?{...c,enrolledBy:[...c.enrolledBy.filter(e=>e!==userHandle),userHandle]}:c))
+  }
+  const unenrollCourse=async(id:string)=>{
+    if(user) await sync.unenrollFromDB(user.id, id)
+    setCourses(p=>p.map(c=>c.id===id?{...c,enrolledBy:c.enrolledBy.filter(e=>e!==userHandle)}:c))
+  }
   const joinByCode=()=>{const c=courses.find(x=>x.shareCode.toLowerCase()===joinCode.trim().toLowerCase());if(c){enrollCourse(c.id);setJoinCode('');setActiveId(c.id)}}
 
-  const addMod=()=>upC(c=>({...c,modules:[...c.modules,{id:uid(),name:`Module ${c.modules.length+1}`,subs:[],createdAt:Date.now()}]}))
-  const delMod=(id:string)=>upC(c=>({...c,modules:c.modules.filter(m=>m.id!==id)}))
+  const addMod=async()=>{
+    if(!activeId) return
+    const position = (courses.find(c=>c.id===activeId)?.modules.length || 0)
+    const mod = {id:uid(),name:`Module ${position+1}`,subs:[],createdAt:Date.now()}
+    const dbMod = await sync.saveModuleToDB(activeId, mod, position)
+    if(dbMod) mod.id = dbMod.id
+    upC(c=>({...c,modules:[...c.modules,mod]}))
+  }
+  const delMod=async(id:string)=>{
+    await sync.deleteModuleFromDB(id)
+    upC(c=>({...c,modules:c.modules.filter(m=>m.id!==id)}))
+  }
   const moveMod=(i:number,d:number)=>{if(!active)return;const j=i+d;if(j<0||j>=active.modules.length)return;upC(c=>({...c,modules:swap(c.modules,i,j)}))}
-  const addSub=(mId:string)=>upC(c=>({...c,modules:c.modules.map(m=>m.id===mId?{...m,subs:[...m.subs,{id:uid(),name:`Topic ${m.subs.length+1}`,videos:[],createdAt:Date.now()}]}:m)}))
-  const delSub=(mId:string,sId:string)=>upC(c=>({...c,modules:c.modules.map(m=>m.id===mId?{...m,subs:m.subs.filter(s=>s.id!==sId)}:m)}))
+  const addSub=async(mId:string)=>{
+    const mod = courses.find(c=>c.id===activeId)?.modules.find(m=>m.id===mId)
+    const position = mod?.subs.length || 0
+    const sub = {id:uid(),name:`Topic ${position+1}`,videos:[],createdAt:Date.now()}
+    const dbTopic = await sync.saveTopicToDB(mId, sub, position)
+    if(dbTopic) sub.id = dbTopic.id
+    upC(c=>({...c,modules:c.modules.map(m=>m.id===mId?{...m,subs:[...m.subs,sub]}:m)}))
+  }
+  const delSub=async(mId:string,sId:string)=>{
+    await sync.deleteTopicFromDB(sId)
+    upC(c=>({...c,modules:c.modules.map(m=>m.id===mId?{...m,subs:m.subs.filter(s=>s.id!==sId)}:m)}))
+  }
   const moveSub=(mId:string,i:number,d:number)=>upC(c=>({...c,modules:c.modules.map(m=>{if(m.id!==mId)return m;const j=i+d;if(j<0||j>=m.subs.length)return m;return{...m,subs:swap(m.subs,i,j)}})}))
   const fetchLink=async()=>{if(!inputVal.trim())return;setFetching(true);setPreview(null);setFetchError('');try{const res=await fetch('/api/youtube',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:inputVal.trim()})});const data=await res.json();if(data.error)setFetchError(data.error);else setPreview(data)}catch{setFetchError('Connection error')};setFetching(false)}
-  const addVid=()=>{if(!preview||!modal?.mId)return;
+  const addVid=async()=>{if(!preview||!modal?.mId)return;
     const targetMod=active?.modules.find(m=>m.id===modal.mId);
     const targetSub=targetMod?.subs.find(s=>s.id===modal.sId);
     if(targetSub?.videos.some(v=>v.id===preview.id)){alert('This video is already in this topic.');return;}
     const inCourse=active?.modules.some(m=>m.subs.some(s=>s.videos.some(v=>v.id===preview.id)));
     if(inCourse&&!confirm('This video already exists in another topic. Add anyway?'))return;
+    const position = targetSub?.videos.length || 0
     const v:Video={...preview,iid:uid(),completed:false,notes:[],votes:0,votedBy:[]};
+    const dbLesson = await sync.saveLessonToDB(modal.sId, v, position)
+    if(dbLesson) v.iid = dbLesson.id
     upC(c=>({...c,modules:c.modules.map(m=>m.id===modal.mId?{...m,subs:m.subs.map(s=>s.id===modal.sId?{...s,videos:[...s.videos,v]}:s)}:m)}));
     setModal(null);setInputVal('');setPreview(null)
   }
-  const delVid=(mId:string,sId:string,i:number)=>upC(c=>({...c,modules:c.modules.map(m=>m.id===mId?{...m,subs:m.subs.map(s=>s.id===sId?{...s,videos:s.videos.filter((_,vi)=>vi!==i)}:s)}:m)}))
-  const toggleComp=(mId:string,sId:string,vi:number)=>upC(c=>({...c,modules:c.modules.map(m=>m.id===mId?{...m,subs:m.subs.map(s=>s.id===sId?{...s,videos:s.videos.map((v,i)=>i===vi?{...v,completed:!v.completed}:v)}:s)}:m)}))
-  const voteVid=(mId:string,sId:string,vi:number,dir:'up'|'down')=>{upC(c=>({...c,modules:c.modules.map(m=>m.id===mId?{...m,subs:m.subs.map(s=>{if(s.id!==sId)return s;const vids=[...s.videos];const v={...vids[vi]};const prev=v.votedBy?.find(x=>x.startsWith(userHandle+':'));if(prev){const od=prev.split(':')[1];if(od===dir)return s;v.votes+=(dir==='up'?2:-2);v.votedBy=v.votedBy.map(x=>x.startsWith(userHandle+':')?`${userHandle}:${dir}`:x)}else{v.votes+=(dir==='up'?1:-1);v.votedBy=[...(v.votedBy||[]),`${userHandle}:${dir}`]};vids[vi]=v;vids.sort((a,b)=>(b.votes||0)-(a.votes||0));return{...s,videos:vids}})}:m)}))  }
+  const delVid=async(mId:string,sId:string,i:number)=>{
+    const vid = active?.modules.find(m=>m.id===mId)?.subs.find(s=>s.id===sId)?.videos[i]
+    if(vid) await sync.deleteLessonFromDB(vid.iid)
+    upC(c=>({...c,modules:c.modules.map(m=>m.id===mId?{...m,subs:m.subs.map(s=>s.id===sId?{...s,videos:s.videos.filter((_,vi)=>vi!==i)}:s)}:m)}))
+  }
+  const toggleComp=async(mId:string,sId:string,vi:number)=>{
+    const vid = active?.modules.find(m=>m.id===mId)?.subs.find(s=>s.id===sId)?.videos[vi]
+    if(vid && user && activeId) await sync.toggleCompletionInDB(user.id, vid.iid, activeId, !vid.completed)
+    upC(c=>({...c,modules:c.modules.map(m=>m.id===mId?{...m,subs:m.subs.map(s=>s.id===sId?{...s,videos:s.videos.map((v,i)=>i===vi?{...v,completed:!v.completed}:v)}:s)}:m)}))
+  }
+  const voteVid=(mId:string,sId:string,vi:number,dir:'up'|'down')=>{upC(c=>({...c,modules:c.modules.map(m=>m.id===mId?{...m,subs:m.subs.map(s=>{if(s.id!==sId)return s;const vids=[...s.videos];const v={...vids[vi]};const prev=v.votedBy?.find(x=>x.startsWith(userHandle+':'));if(prev){const od=prev.split(':')[1];if(od===dir)return s;v.votes+=(dir==='up'?2:-2);v.votedBy=v.votedBy.map(x=>x.startsWith(userHandle+':')?`${userHandle}:${dir}`:x)}else{v.votes+=(dir==='up'?1:-1);v.votedBy=[...(v.votedBy||[]),`${userHandle}:${dir}`]};vids[vi]=v;vids.sort((a,b)=>(b.votes||0)-(a.votes||0));return{...s,videos:vids}})}:m)}));
+    const vid = courses.find(c=>c.id===activeId)?.modules.find(m=>m.id===mId)?.subs.find(s=>s.id===sId)?.videos[vi]
+    if(vid && user) sync.voteVideoInDB(user.id, vid.iid, dir==='up'? 1 : -1)
+  }
   const getVoteDir=(v:Video)=>{const e=v.votedBy?.find(x=>x.startsWith(userHandle+':'));return e?e.split(':')[1]:''}
-  const addNote=(mId:string,sId:string,vi:number)=>{if(!noteDesc.trim())return;const minute=noteMin||fmtTime(playerTime);const n:Note={id:uid(),minute,text:noteDesc.slice(0,280),author:userName,authorHandle:userHandle,authorImg:userImg,ts:Date.now(),isPublic:noteTab==='public',reactions:{}};upC(c=>({...c,modules:c.modules.map(m=>m.id===mId?{...m,subs:m.subs.map(s=>s.id===sId?{...s,videos:s.videos.map((v,i)=>i===vi?{...v,notes:[...v.notes,n]}:v)}:s)}:m)}));setNoteMin('');setNoteDesc('')}
-  const delNote=(mId:string,sId:string,vi:number,nId:string)=>upC(c=>({...c,modules:c.modules.map(m=>m.id===mId?{...m,subs:m.subs.map(s=>s.id===sId?{...s,videos:s.videos.map((v,i)=>i===vi?{...v,notes:v.notes.filter(n=>n.id!==nId)}:v)}:s)}:m)}))
-  const toggleReaction=(mId:string,sId:string,vi:number,nId:string,emoji:string)=>{
+  const addNote=async(mId:string,sId:string,vi:number)=>{
+    if(!noteDesc.trim()||!user)return
+    const vid = active?.modules.find(m=>m.id===mId)?.subs.find(s=>s.id===sId)?.videos[vi]
+    const minute=noteMin||fmtTime(playerTime)
+    const isPublic = noteTab==='public'
+    if(vid) await sync.saveNoteToDB(vid.iid, user.id, minute, noteDesc.slice(0,280), isPublic)
+    const n:Note={id:uid(),minute,text:noteDesc.slice(0,280),author:userName,authorHandle:userHandle,authorImg:userImg,ts:Date.now(),isPublic,reactions:{}}
+    upC(c=>({...c,modules:c.modules.map(m=>m.id===mId?{...m,subs:m.subs.map(s=>s.id===sId?{...s,videos:s.videos.map((v,i)=>i===vi?{...v,notes:[...v.notes,n]}:v)}:s)}:m)}))
+    setNoteMin('');setNoteDesc('')
+  }
+  const delNote=async(mId:string,sId:string,vi:number,nId:string)=>{
+    await sync.deleteNoteFromDB(nId)
+    upC(c=>({...c,modules:c.modules.map(m=>m.id===mId?{...m,subs:m.subs.map(s=>s.id===sId?{...s,videos:s.videos.map((v,i)=>i===vi?{...v,notes:v.notes.filter(n=>n.id!==nId)}:v)}:s)}:m)}))
+  }
+  const toggleReaction=async(mId:string,sId:string,vi:number,nId:string,emoji:string)=>{
+    if(user) await sync.toggleReactionInDB(user.id, nId, emoji)
     upC(c=>({...c,modules:c.modules.map(m=>m.id===mId?{...m,subs:m.subs.map(s=>s.id===sId?{...s,videos:s.videos.map((v,i)=>i===vi?{...v,notes:v.notes.map(n=>{
       if(n.id!==nId)return n;const r={...n.reactions};if(!r[emoji])r[emoji]=[];
       if(r[emoji].includes(userHandle))r[emoji]=r[emoji].filter(u=>u!==userHandle);
@@ -361,7 +460,20 @@ export default function Home(){
   const seekTo=(sec:number)=>{try{ytRef.current?.seekTo(sec)}catch{}}
   const captureTime=()=>{try{setNoteMin(fmtTime(ytRef.current?.getCurrentTime()||playerTime))}catch{setNoteMin(fmtTime(playerTime))}}
   const startEdit=(id:string,v:string)=>{setEditId(id);setEditVal(v)}
-  const doRename=(type:string,mId?:string)=>{if(!editVal.trim()){setEditId(null);return};if(type==='course')setCourses(p=>p.map(c=>c.id===editId?{...c,name:editVal.trim()}:c));else if(type==='mod')upC(c=>({...c,modules:c.modules.map(m=>m.id===editId?{...m,name:editVal.trim()}:m)}));else if(type==='sub')upC(c=>({...c,modules:c.modules.map(m=>m.id===mId?{...m,subs:m.subs.map(s=>s.id===editId?{...s,name:editVal.trim()}:s)}:m)}));setEditId(null)}
+  const doRename=async(type:string,mId?:string)=>{
+    if(!editVal.trim()){setEditId(null);return}
+    if(type==='course'){
+      setCourses(p=>p.map(c=>c.id===editId?{...c,name:editVal.trim()}:c))
+      if(editId) await sync.updateCourseInDB(editId, {title:editVal.trim()})
+    } else if(type==='mod'){
+      upC(c=>({...c,modules:c.modules.map(m=>m.id===editId?{...m,name:editVal.trim()}:m)}))
+      if(editId) await sync.updateModuleInDB(editId, {name:editVal.trim()})
+    } else if(type==='sub'){
+      upC(c=>({...c,modules:c.modules.map(m=>m.id===mId?{...m,subs:m.subs.map(s=>s.id===editId?{...s,name:editVal.trim()}:s)}:m)}))
+      if(editId) await sync.updateTopicInDB(editId, {name:editVal.trim()})
+    }
+    setEditId(null)
+  }
   const toggleAll=()=>{if(!active)return;const next=!allExpanded;setAllExpanded(next);const n={...coll};active.modules.forEach(m=>{n[m.id]=!next;m.subs.forEach(s=>{n[s.id]=!next})});setColl(n)}
   const getAllNotes=()=>{if(!active)return[];const all:any[]=[];active.modules.forEach(mod=>{mod.subs.forEach(sub=>{sub.videos.forEach((vid,vi)=>{vid.notes.forEach(n=>{all.push({...n,videoTitle:vid.title,videoThumb:vid.thumbnail,modName:mod.name,subName:sub.name,mId:mod.id,sId:sub.id,vi})})})})});return(noteSearch?all.filter(n=>n.text.toLowerCase().includes(noteSearch.toLowerCase())||n.videoTitle.toLowerCase().includes(noteSearch.toLowerCase())):all).sort((a,b)=>noteSort==='recent'?b.ts-a.ts:a.ts-b.ts)}
 
