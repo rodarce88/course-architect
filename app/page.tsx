@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic'
 import { formatDistanceToNow } from 'date-fns'
 const YouTubePlayer = dynamic(() => import('@/components/YouTubePlayer'), { ssr: false })
 
-type Video={id:string;iid:string;title:string;thumbnail:string;channel:string;channelImg:string;subscribers:string;views:string;viewsShort?:string;likes:string;likesShort?:string;duration:string;url:string;completed:boolean;notes:Note[];votes:number;votedBy:string[];createdAt?:number}
+type Video={id:string;iid:string;title:string;thumbnail:string;channel:string;channelImg:string;subscribers:string;views:string;viewsShort?:string;likes:string;likesShort?:string;duration:string;url:string;completed:boolean;notes:Note[];votes:number;votedBy:string[];createdAt?:number;lastPosition?:number}
 type Note={id:string;minute:string;text:string;author:string;authorHandle:string;authorImg:string;ts:number;isPublic:boolean;reactions:Record<string,string[]>}
 type Sub={id:string;name:string;videos:Video[];createdAt:number}
 type Mod={id:string;name:string;subs:Sub[];createdAt:number}
@@ -90,7 +90,19 @@ function PBar({done,total}:{done:number;total:number}){
   )
 }
 
-function VotePill({score,voted,onUp,onDown,compact=false}:{score:number;voted:string;onUp:()=>void;onDown:()=>void;compact?:boolean}){
+function VotePill({score,voted,onUp,onDown,compact=false,disabled=false}:{score:number;voted:string;onUp:()=>void;onDown:()=>void;compact?:boolean;disabled?:boolean}){
+  if(disabled){
+    return(
+      <div className="flex flex-col items-center gap-0.5 relative group/vote" onClick={e=>e.stopPropagation()}>
+        <div className={`flex flex-col items-center ${compact?'gap-0':'gap-1 bg-[#eef1f3] rounded-2xl px-2 py-2'} opacity-40`}>
+          <svg width={compact?14:18} height={compact?14:18} viewBox="0 0 16 16" fill="#cbd5e1"><path d="M8 ${compact?3:2}L${compact?13:14} 9H${compact?3:2}L8 ${compact?3:2}Z"/></svg>
+          <span className={`${compact?'text-[9px]':'text-sm'} font-black tabular-nums text-slate-400`}>{score}</span>
+          <svg width={compact?14:18} height={compact?14:18} viewBox="0 0 16 16" fill="#cbd5e1"><path d="M8 ${compact?13:14}L${compact?3:2} 7H${compact?13:14}L8 ${compact?13:14}Z"/></svg>
+        </div>
+        <span className="text-[8px] font-black text-slate-400">15%</span>
+      </div>
+    )
+  }
   if(compact) return(
     <div className="flex flex-col items-center gap-0" onClick={e=>e.stopPropagation()}>
       <button onClick={e=>{e.stopPropagation();onUp()}} className={`p-0.5 transition-colors ${voted==='up'?'text-[#FF0000]':'text-slate-300 hover:text-[#FF0000]'}`}>
@@ -251,6 +263,7 @@ export default function Home(){
   const[noteMin,setNoteMin]=useState('')
   const[noteDesc,setNoteDesc]=useState('')
   const[noteTab,setNoteTab]=useState<'public'|'mine'>('public')
+  const[viewTab,setViewTab]=useState<'notes'|'videos'>('notes')
   const[editId,setEditId]=useState<string|null>(null)
   const[editVal,setEditVal]=useState('')
   const[numpad,setNumpad]=useState(false)
@@ -633,7 +646,7 @@ export default function Home(){
           {/* Main Video Area */}
           <div className="flex-1 px-0 lg:px-6 py-4">
             <div className="w-full rounded-none lg:rounded-2xl overflow-hidden bg-black aspect-video">
-              <YouTubePlayer ref={ytRef} videoId={vid.id} onTimeUpdate={setPlayerTime}/>
+              <YouTubePlayer ref={ytRef} videoId={vid.id} startAt={vid.lastPosition||0} onTimeUpdate={setPlayerTime}/>
             </div>
 
             <div className="px-4 lg:px-0 py-5 space-y-4">
@@ -708,14 +721,14 @@ export default function Home(){
                 </button>
               </div>
 
-              {/* Tabs: Other Videos | Collaborative Notes */}
+              {/* Tabs: Notes | Other Videos */}
               <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden">
                 <div className="flex border-b border-[#eef1f3]">
-                  <button onClick={()=>setNoteTab('public')} className={`flex-1 py-4 text-sm font-black transition-colors ${noteTab==='public'?'text-[#FF0000] border-b-[3px] border-[#FF0000] -mb-px':'text-slate-400 hover:text-slate-600'}`}>Other Videos</button>
-                  <button onClick={()=>setNoteTab('mine')} className={`flex-1 py-4 text-sm font-black transition-colors ${noteTab==='mine'?'text-[#FF0000] border-b-[3px] border-[#FF0000] -mb-px':'text-slate-400 hover:text-slate-600'}`}>Collaborative Notes</button>
+                  <button onClick={()=>setViewTab('notes')} className={`flex-1 py-4 text-sm font-black transition-colors ${viewTab==='notes'?'text-[#FF0000] border-b-[3px] border-[#FF0000] -mb-px':'text-slate-400 hover:text-slate-600'}`}>Notes</button>
+                  <button onClick={()=>setViewTab('videos')} className={`flex-1 py-4 text-sm font-black transition-colors ${viewTab==='videos'?'text-[#FF0000] border-b-[3px] border-[#FF0000] -mb-px':'text-slate-400 hover:text-slate-600'}`}>Other Videos</button>
                 </div>
 
-                {noteTab==='public'?(
+                {viewTab==='videos'?(
                   /* Other Videos tab — sorted by votes, preferred creator first */
                   <div className="p-4 space-y-3">
                     {preferredCreator&&(
@@ -746,7 +759,9 @@ export default function Home(){
                             <div className="flex-shrink-0" onClick={e=>e.stopPropagation()}>
                               {isLocked
                                 ? <div className="w-8 h-full flex items-center justify-center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
-                                : <div className={`flex flex-col items-center justify-between h-full px-2 py-2 rounded-xl ${isActive?'bg-white border border-red-100':'bg-[#eef1f3] border border-transparent'}`} style={{minHeight:72}}>
+                                : !canVote
+                                  ? <div className="flex flex-col items-center justify-center h-full px-2 py-2 opacity-40"><svg width="16" height="16" viewBox="0 0 16 16" fill="#cbd5e1"><path d="M8 2L14 10H2L8 2Z"/></svg><span className="text-xs font-black text-slate-400 my-0.5">{sv.votes||'0'}</span><svg width="16" height="16" viewBox="0 0 16 16" fill="#cbd5e1"><path d="M8 14L2 6H14L8 14Z"/></svg><span className="text-[7px] font-black text-slate-400 mt-0.5">15%</span></div>
+                                  : <div className={`flex flex-col items-center justify-between h-full px-2 py-2 rounded-xl ${isActive?'bg-white border border-red-100':'bg-[#eef1f3] border border-transparent'}`} style={{minHeight:72}}>
                                     <button onClick={()=>voteVid(pv.mId,pv.sId,originalVi,'up')} className={`p-1.5 rounded-lg transition-all active:scale-90 ${getVoteDir(sv)==='up'?'text-[#FF0000] bg-red-50':'text-slate-400 hover:text-[#FF0000] hover:bg-white'}`}>
                                       <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2L14 10H2L8 2Z"/></svg>
                                     </button>
@@ -789,8 +804,8 @@ export default function Home(){
                   <div className="p-5 space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex border border-[#eef1f3] rounded-xl overflow-hidden bg-[#f5f7f9]">
-                        <button onClick={()=>setNoteTab('mine')} className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-[#2c2f31] bg-white shadow-sm">Mine</button>
-                        <button onClick={()=>setNoteTab('public')} className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">Other Videos</button>
+                        <button onClick={()=>setNoteTab('public')} className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider ${noteTab==='public'?'text-[#2c2f31] bg-white shadow-sm':'text-slate-400'}`}>Public</button>
+                        <button onClick={()=>setNoteTab('mine')} className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider ${noteTab==='mine'?'text-[#2c2f31] bg-white shadow-sm':'text-slate-400'}`}>Mine</button>
                       </div>
                     </div>
                     <div className="flex gap-2 items-end">
@@ -826,7 +841,7 @@ export default function Home(){
                 <div key={sv.iid} onClick={()=>{if(isLocked){setEnrollModal(true)}else{goTo(svi)}}} className={`flex items-center gap-2.5 p-2.5 rounded-2xl cursor-pointer transition-all ${svi===pv.vi?'bg-red-50 border border-red-100':'hover:bg-[#f5f7f9] border border-transparent'} ${isLocked?'opacity-60':''}`}>
                   {isLocked
                     ? <div className="flex flex-col items-center justify-center w-5"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
-                    : <VotePill score={sv.votes} voted={getVoteDir(sv)} onUp={()=>voteVid(pv.mId,pv.sId,svi,'up')} onDown={()=>voteVid(pv.mId,pv.sId,svi,'down')} compact/>
+                    : <VotePill score={sv.votes} voted={getVoteDir(sv)} onUp={()=>voteVid(pv.mId,pv.sId,svi,'up')} onDown={()=>voteVid(pv.mId,pv.sId,svi,'down')} compact disabled={!canVote}/>
                   }
                   <button onClick={e=>{e.stopPropagation();if(!isLocked)toggleComp(pv.mId,pv.sId,svi)}} className="flex-shrink-0 text-sm">
                     {sv.completed?<span className="text-emerald-500 font-black">✓</span>:<span className="text-slate-300">○</span>}
@@ -1033,8 +1048,8 @@ export default function Home(){
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div className="flex-1">
                 {owner
-                  ? <input value={active.name} onChange={e=>setCourses(p=>p.map(c=>c.id===active.id?{...c,name:e.target.value}:c))} maxLength={120} className="text-4xl md:text-5xl font-black text-[#2c2f31] tracking-tight bg-transparent border-b-2 border-transparent hover:border-[#eef1f3] focus:border-[#FF0000] focus:outline-none w-full mb-3" onBlur={()=>{if(active.id)sync.updateCourseInDB(active.id,{title:active.name})}}/>
-                  : <h1 className="text-4xl md:text-5xl font-black text-[#2c2f31] tracking-tight mb-3">{active.name}</h1>
+                  ? <input value={active.name} onChange={e=>setCourses(p=>p.map(c=>c.id===active.id?{...c,name:e.target.value}:c))} maxLength={120} className="text-3xl md:text-4xl font-black text-[#2c2f31] tracking-tight bg-transparent border-b-2 border-transparent hover:border-[#eef1f3] focus:border-[#FF0000] focus:outline-none w-full mb-3 py-1" onBlur={()=>{if(active.id)sync.updateCourseInDB(active.id,{title:active.name})}}/>
+                  : <h1 className="text-3xl md:text-4xl font-black text-[#2c2f31] tracking-tight mb-3">{active.name}</h1>
                 }
                 {owner
                   ? <textarea value={active.description||""} onChange={e=>setCourses(p=>p.map(c=>c.id===active.id?{...c,description:e.target.value}:c))} placeholder="Add a description..." rows={3} maxLength={500} className="text-lg text-slate-500 leading-relaxed bg-transparent border border-transparent hover:border-[#eef1f3] focus:border-[#FF0000] focus:outline-none w-full resize-none rounded-xl p-2 max-w-3xl" onBlur={()=>{if(active.id)sync.updateCourseInDB(active.id,{description:active.description})}}/>
@@ -1078,7 +1093,7 @@ export default function Home(){
                     <section key={mod.id}>
                       {/* Module Header */}
                       <div className="flex items-center justify-between mb-5 group">
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 flex-1 min-w-0">
                           <button onClick={()=>togColl(mod.id)} className="text-[#dfe3e6] hover:text-[#FF0000] transition-colors">
                             <span className="text-5xl font-black tracking-tighter leading-none">{String(mi+1).padStart(2,'0')}</span>
                           </button>
