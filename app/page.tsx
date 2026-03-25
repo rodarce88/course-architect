@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic'
 import { formatDistanceToNow } from 'date-fns'
 const YouTubePlayer = dynamic(() => import('@/components/YouTubePlayer'), { ssr: false })
 
-type Video={id:string;iid:string;title:string;thumbnail:string;channel:string;channelImg:string;subscribers:string;views:string;viewsShort?:string;likes:string;likesShort?:string;duration:string;url:string;completed:boolean;notes:Note[];votes:number;votedBy:string[]}
+type Video={id:string;iid:string;title:string;thumbnail:string;channel:string;channelImg:string;subscribers:string;views:string;viewsShort?:string;likes:string;likesShort?:string;duration:string;url:string;completed:boolean;notes:Note[];votes:number;votedBy:string[];createdAt?:number}
 type Note={id:string;minute:string;text:string;author:string;authorHandle:string;authorImg:string;ts:number;isPublic:boolean;reactions:Record<string,string[]>}
 type Sub={id:string;name:string;videos:Video[];createdAt:number}
 type Mod={id:string;name:string;subs:Sub[];createdAt:number}
@@ -393,7 +393,7 @@ export default function Home(){
     await sync.deleteModuleFromDB(id)
     upC(c=>({...c,modules:c.modules.filter(m=>m.id!==id)}))
   }
-  const moveMod=(i:number,d:number)=>{if(!active)return;const j=i+d;if(j<0||j>=active.modules.length)return;upC(c=>({...c,modules:swap(c.modules,i,j)}))}
+  const moveMod=async(i:number,d:number)=>{if(!active)return;const j=i+d;if(j<0||j>=active.modules.length)return;upC(c=>{const mods=swap(c.modules,i,j);mods.forEach((m,idx)=>sync.updateModuleInDB(m.id,{position:idx}));return{...c,modules:mods}})}
   const addSub=async(mId:string)=>{
     const mod = courses.find(c=>c.id===activeId)?.modules.find(m=>m.id===mId)
     const position = mod?.subs.length || 0
@@ -406,7 +406,7 @@ export default function Home(){
     await sync.deleteTopicFromDB(sId)
     upC(c=>({...c,modules:c.modules.map(m=>m.id===mId?{...m,subs:m.subs.filter(s=>s.id!==sId)}:m)}))
   }
-  const moveSub=(mId:string,i:number,d:number)=>upC(c=>({...c,modules:c.modules.map(m=>{if(m.id!==mId)return m;const j=i+d;if(j<0||j>=m.subs.length)return m;return{...m,subs:swap(m.subs,i,j)}})}))
+  const moveSub=(mId:string,i:number,d:number)=>upC(c=>({...c,modules:c.modules.map(m=>{if(m.id!==mId)return m;const j=i+d;if(j<0||j>=m.subs.length)return m;const subs=swap(m.subs,i,j);subs.forEach((s,idx)=>sync.updateTopicInDB(s.id,{position:idx}));return{...m,subs}})}))
   const fetchLink=async()=>{if(!inputVal.trim())return;setFetching(true);setPreview(null);setFetchError('');try{const res=await fetch('/api/youtube',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:inputVal.trim()})});const data=await res.json();if(data.error)setFetchError(data.error);else setPreview(data)}catch{setFetchError('Connection error')};setFetching(false)}
   const addVid=async()=>{if(!preview||!modal?.mId)return;
     const targetMod=active?.modules.find(m=>m.id===modal.mId);
@@ -415,7 +415,7 @@ export default function Home(){
     const inCourse=active?.modules.some(m=>m.subs.some(s=>s.videos.some(v=>v.id===preview.id)));
     if(inCourse&&!confirm('This video already exists in another topic. Add anyway?'))return;
     const position = targetSub?.videos.length || 0
-    const v:Video={...preview,iid:uid(),completed:false,notes:[],votes:0,votedBy:[]};
+    const v:Video={...preview,iid:uid(),completed:false,notes:[],votes:0,votedBy:[],createdAt:Date.now()};
     const dbLesson = await sync.saveLessonToDB(modal.sId, v, position)
     if(dbLesson) v.iid = dbLesson.id
     upC(c=>({...c,modules:c.modules.map(m=>m.id===modal.mId?{...m,subs:m.subs.map(s=>s.id===modal.sId?{...s,videos:[...s.videos,v]}:s)}:m)}));
@@ -589,20 +589,34 @@ export default function Home(){
   if(pv&&active){
     const mod=active.modules.find(m=>m.id===pv.mId);const sub=mod?.subs.find(s=>s.id===pv.sId);const vid=sub?.videos[pv.vi]
     if(!vid){setPV(null);return null}
-    const goTo=(vi:number)=>{setPV((p:any)=>({...p,vi}));setPlayerTime(0);setNoteMin('')}
+    const goTo=(vi:number)=>{
+      // Save position before switching
+      if(vid && user && activeId) sync.toggleCompletionInDB(user.id, vid.iid, activeId, vid.completed).catch(()=>{})
+      if(vid && user && playerTime>5) sync.savePositionInDB(user.id, vid.iid, activeId!, Math.floor(playerTime)).catch(()=>{})
+      setPV((p:any)=>({...p,vi}));setPlayerTime(0);setNoteMin('')
+    }
     const filteredNotes=vid.notes.filter(n=>noteTab==='public'?n.isPublic:n.authorHandle===userHandle)
+    const vidDuration=parseDur(vid.duration)
+    const watchedPct=vidDuration>0?playerTime/vidDuration:0
+    const canVote=watchedPct>=0.15
+
+    // Save position when leaving the player view
+    const savePositionOnLeave=()=>{
+      if(vid && user && activeId && playerTime>5) sync.savePositionInDB(user.id, vid.iid, activeId, Math.floor(playerTime)).catch(()=>{})
+    }
+
     return(
       <div className="min-h-screen bg-[#f5f7f9]">
         {/* Header */}
         <header className="fixed top-0 w-full z-50 flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-xl shadow-sm border-b border-slate-200/30">
           <div className="flex items-center gap-3">
-            <button onClick={()=>setPV(null)} className="flex items-center gap-1.5 text-xs font-black text-slate-500 hover:text-[#FF0000] transition-colors uppercase tracking-wider">
+            <button onClick={()=>{savePositionOnLeave();setPV(null)}} className="flex items-center gap-1.5 text-xs font-black text-slate-500 hover:text-[#FF0000] transition-colors uppercase tracking-wider">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
               Back
             </button>
             <div className="h-4 w-px bg-[#eef1f3]"/>
             <nav className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.05em] text-slate-400">
-              <span className="hover:text-[#FF0000] cursor-pointer" onClick={()=>setPV(null)}>{active.name}</span>
+              <span className="hover:text-[#FF0000] cursor-pointer" onClick={()=>{savePositionOnLeave();setPV(null)}}>{active.name}</span>
               <span>›</span>
               <span>{mod?.name}</span>
               <span>›</span>
@@ -656,15 +670,17 @@ export default function Home(){
                 </div>
                 <div className="flex items-center gap-4">
                   {/* Reddit-style vote pill */}
-                  <div className="flex flex-col items-center bg-[#eef1f3] px-2 py-1 rounded-xl border border-[#e5e9eb]">
-                    <button onClick={()=>voteVid(pv.mId,pv.sId,pv.vi,'up')} className={`leading-none transition-colors ${getVoteDir(vid)==='up'?'text-[#FF0000]':'text-slate-400 hover:text-[#FF0000]'}`}>
+                  <div className="flex flex-col items-center bg-[#eef1f3] px-2 py-1 rounded-xl border border-[#e5e9eb] relative">
+                    {!canVote&&<div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-[#2c2f31] text-white text-[9px] px-2 py-1 rounded-lg whitespace-nowrap font-medium opacity-0 hover:opacity-100 pointer-events-none z-10">Watch 15% to vote</div>}
+                    <button onClick={()=>canVote&&voteVid(pv.mId,pv.sId,pv.vi,'up')} className={`leading-none transition-colors ${!canVote?'text-slate-300 cursor-not-allowed':getVoteDir(vid)==='up'?'text-[#FF0000]':'text-slate-400 hover:text-[#FF0000]'}`}>
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2L14 9H2L8 2Z"/></svg>
                     </button>
                     <span className={`text-[0.7rem] font-black leading-none my-0.5 ${getVoteDir(vid)==='up'?'text-[#FF0000]':getVoteDir(vid)==='down'?'text-blue-500':'text-[#2c2f31]'}`}>{vid.votes>=1000?`${(vid.votes/1000).toFixed(1)}k`:vid.votes}</span>
-                    <button onClick={()=>voteVid(pv.mId,pv.sId,pv.vi,'down')} className={`leading-none transition-colors ${getVoteDir(vid)==='down'?'text-blue-500':'text-slate-400 hover:text-blue-500'}`}>
+                    <button onClick={()=>canVote&&voteVid(pv.mId,pv.sId,pv.vi,'down')} className={`leading-none transition-colors ${!canVote?'text-slate-300 cursor-not-allowed':getVoteDir(vid)==='down'?'text-blue-500':'text-slate-400 hover:text-blue-500'}`}>
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 14L2 7H14L8 14Z"/></svg>
                     </button>
                   </div>
+                  {!canVote&&<p className="text-[9px] text-slate-400 font-bold">Watch 15% to vote</p>}
                   {/* Views + likes */}
                   <div className="flex items-center gap-3 text-slate-400">
                     <div className="flex flex-col items-center">
@@ -1017,11 +1033,11 @@ export default function Home(){
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div className="flex-1">
                 {owner
-                  ? <input value={active.name} onChange={e=>setCourses(p=>p.map(c=>c.id===active.id?{...c,name:e.target.value}:c))} className="text-4xl md:text-5xl font-black text-[#2c2f31] tracking-tight bg-transparent border-b-2 border-transparent hover:border-[#eef1f3] focus:border-[#FF0000] focus:outline-none w-full mb-3"/>
+                  ? <input value={active.name} onChange={e=>setCourses(p=>p.map(c=>c.id===active.id?{...c,name:e.target.value}:c))} maxLength={120} className="text-4xl md:text-5xl font-black text-[#2c2f31] tracking-tight bg-transparent border-b-2 border-transparent hover:border-[#eef1f3] focus:border-[#FF0000] focus:outline-none w-full mb-3" onBlur={()=>{if(active.id)sync.updateCourseInDB(active.id,{title:active.name})}}/>
                   : <h1 className="text-4xl md:text-5xl font-black text-[#2c2f31] tracking-tight mb-3">{active.name}</h1>
                 }
                 {owner
-                  ? <textarea value={active.description||""} onChange={e=>setCourses(p=>p.map(c=>c.id===active.id?{...c,description:e.target.value}:c))} placeholder="Add a description..." rows={2} className="text-lg text-slate-500 leading-relaxed bg-transparent border border-transparent hover:border-[#eef1f3] focus:border-[#FF0000] focus:outline-none w-full resize-none rounded-xl p-1 max-w-2xl"/>
+                  ? <textarea value={active.description||""} onChange={e=>setCourses(p=>p.map(c=>c.id===active.id?{...c,description:e.target.value}:c))} placeholder="Add a description..." rows={3} maxLength={500} className="text-lg text-slate-500 leading-relaxed bg-transparent border border-transparent hover:border-[#eef1f3] focus:border-[#FF0000] focus:outline-none w-full resize-none rounded-xl p-2 max-w-3xl" onBlur={()=>{if(active.id)sync.updateCourseInDB(active.id,{description:active.description})}}/>
                   : active.description&&<p className="text-lg text-slate-500 max-w-2xl leading-relaxed">{active.description}</p>
                 }
                 <div className="flex items-center gap-2 mt-3 flex-wrap">
@@ -1067,8 +1083,8 @@ export default function Home(){
                             <span className="text-5xl font-black tracking-tighter leading-none">{String(mi+1).padStart(2,'0')}</span>
                           </button>
                           {editId===mod.id
-                            ? <span className="flex items-center gap-2">
-                                <input autoFocus value={editVal} onChange={e=>setEditVal(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')doRename('mod')}} className="px-3 py-1 rounded-xl text-xl font-black border border-[#eef1f3] text-[#2c2f31] focus:outline-none focus:ring-2 focus:ring-red-200"/>
+                            ? <span className="flex items-center gap-2 flex-1">
+                                <input autoFocus value={editVal} onChange={e=>setEditVal(e.target.value)} maxLength={80} onKeyDown={e=>{if(e.key==='Enter')doRename('mod')}} className="flex-1 px-3 py-1.5 rounded-xl text-xl font-black border border-[#eef1f3] text-[#2c2f31] focus:outline-none focus:ring-2 focus:ring-red-200 min-w-0"/>
                                 <button onClick={()=>doRename('mod')} className="text-emerald-500 font-black">✓</button>
                                 <button onClick={()=>setEditId(null)} className="text-red-400 font-black">✕</button>
                               </span>
@@ -1106,8 +1122,8 @@ export default function Home(){
                                 <button onClick={()=>togColl(sub.id)} className="text-slate-400 text-xs w-4 font-bold">{coll[sub.id]?'▶':'▼'}</button>
                                 <span className="text-slate-400 text-xs font-black">#</span>
                                 {editId===sub.id
-                                  ? <span className="flex items-center gap-1 flex-1">
-                                      <input autoFocus value={editVal} onChange={e=>setEditVal(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')doRename('sub',mod.id)}} className="flex-1 px-2 py-0.5 rounded-xl text-xs border border-[#eef1f3] text-[#2c2f31] focus:outline-none"/>
+                                  ? <span className="flex items-center gap-1.5 flex-1">
+                                      <input autoFocus value={editVal} onChange={e=>setEditVal(e.target.value)} maxLength={60} onKeyDown={e=>{if(e.key==='Enter')doRename('sub',mod.id)}} className="flex-1 px-3 py-1.5 rounded-xl text-sm font-bold border border-[#eef1f3] text-[#2c2f31] focus:outline-none focus:ring-2 focus:ring-red-200 min-w-0"/>
                                       <button onClick={()=>doRename('sub',mod.id)} className="text-emerald-500 text-xs font-black">✓</button>
                                       <button onClick={()=>setEditId(null)} className="text-red-400 text-xs font-black">✕</button>
                                     </span>
@@ -1148,7 +1164,7 @@ export default function Home(){
                                             <div className="flex-1 min-w-0 cursor-pointer pt-0.5" onClick={()=>{if(isLocked){setEnrollModal(true)}else{setPV({mId:mod.id,sId:sub.id,vi})}}}>
                                               <p className={`text-sm font-bold text-[#2c2f31] line-clamp-2 tracking-tight ${v.completed?'opacity-50 line-through':''}`}>{v.title}</p>
                                               <div className="flex items-center gap-1.5 mt-1">{v.channelImg&&<img src={v.channelImg} alt="" className="w-3 h-3 rounded-full object-cover"/>}<span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{v.channel}</span>{isLocked&&<span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-[#eef1f3] text-slate-400 uppercase tracking-wider">ENROLL TO UNLOCK</span>}</div>
-                                              <div className="flex gap-2 text-[8px] text-slate-400 mt-0.5 font-bold uppercase tracking-wider"><span>{v.viewsShort||v.views}</span><span>{v.likesShort||v.likes}</span></div>
+                                              <div className="flex gap-2 text-[8px] text-slate-400 mt-0.5 font-bold uppercase tracking-wider"><span>{v.viewsShort||v.views}</span><span>{v.likesShort||v.likes}</span>{v.createdAt&&<span>· {ago(v.createdAt)}</span>}</div>
                                             </div>
                                             {owner&&<div className="opacity-0 group-hover/v:opacity-100 transition-opacity mt-1">
                                               <button onClick={e=>{e.stopPropagation();setDeleteTarget({id:v.iid,name:v.title,type:'vid',mId:mod.id,sId:sub.id,vi})}} className="p-1.5 text-red-300 hover:text-red-500 text-[10px]" title="Remove video">✕</button>
@@ -1465,6 +1481,7 @@ export default function Home(){
                             {featured.description&&<p className="text-sm text-slate-500 leading-relaxed line-clamp-2 font-medium">{featured.description}</p>}
                           </div>
                           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">by arc/{featured.ownerHandle} · {cVC(featured)} vid · {fmtS(cDur(featured))} · 👥 {featured.enrolledBy?.length||0}</p>
+                          {featured.enrolledBy?.includes(userHandle)&&cVC(featured)>0&&<PBar done={cComp(featured)} total={cVC(featured)}/>}
                           <div className="flex gap-3">
                             {!featured.enrolledBy?.includes(userHandle)&&featured.ownerHandle!==userHandle
                               ? <button onClick={e=>{e.stopPropagation();enrollCourse(featured.id)}} className="px-6 py-3 bg-[#FF0000] text-white font-black rounded-xl text-xs uppercase tracking-[0.15em] shadow-[0_4px_16px_rgba(255,0,0,0.25)] hover:bg-red-700 active:scale-95 transition-all">🎯 Lock In</button>
@@ -1501,6 +1518,7 @@ export default function Home(){
                             <h3 className="text-base font-black tracking-tight text-[#2c2f31] group-hover:text-[#FF0000] transition-colors leading-snug">{c.name}</h3>
                             <p className="text-[11px] text-slate-400 font-bold mt-0.5">by arc/{c.ownerHandle}</p>
                           </div>
+                          {c.enrolledBy?.includes(userHandle)&&cVC(c)>0&&<PBar done={cComp(c)} total={cVC(c)}/>}
                           <div className="flex items-center justify-between mt-auto">
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{cVC(c)} vid · 👥 {c.enrolledBy?.length||0}</p>
                             {!c.enrolledBy?.includes(userHandle)&&c.ownerHandle!==userHandle
